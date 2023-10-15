@@ -1,0 +1,16 @@
+cabal-version:      2.4
+name:               Asteroids
+version:            0.1.0.0
+author:             Group53
+maintainer:         r.schenkels@uu.nl, m.a.chappin@uu.nl
+synopsis:           A simple asteroids game
+description:        The implementation of a simple asteroids game in Haskell by group 53 of the Functional Programming course at Utrecht University, 2023.
+-- license: 
+extra-source-files: README.md
+
+executable Asteroids
+    main-is:          Main.hs
+    build-depends:    base ^>=4.16.4.0, gloss, random
+    hs-source-dirs:   src
+    other-modules:    Common, Controller, Model, View
+    default-language: Haskell2010
