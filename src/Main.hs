@@ -12,5 +12,5 @@ main = playIO (InWindow "Asteroids on Steroids" (640, 640) (0, 0)) -- Or FullScr
               24               -- Frames per second
               initialState     -- Initial state
               renderGame       -- View function
-              handleEvents     -- Event function
+              handleInput      -- Event function
               simulateGame     -- Step function

@@ -4,6 +4,11 @@ module Model where
 
 import Common
 
+-- | The data types to represent the game entities.
+-- Each entity has at least a position, direction, speed, and hitbox.
+
+-- | The ship is the player's spaceship.
+-- It is the only entity that can be controlled by the player.
 data Ship = Ship {
     pos :: Point,
     dir :: Direction,
@@ -11,6 +16,7 @@ data Ship = Ship {
     hbx :: HitboxUnit
 }
 
+-- | An asteroid floats around in space, and can be destroyed by the player.
 data Asteroid = Asteroid {
     pos  :: Point,
     dir  :: Direction,
@@ -19,6 +25,7 @@ data Asteroid = Asteroid {
     size :: Float
 }
 
+-- | An enemy is an entity that can shoot at the player.
 data Enemy = Enemy {
     pos :: Point,
     dir :: Direction,
@@ -27,6 +34,7 @@ data Enemy = Enemy {
     dif :: Difficulty
 }
 
+-- | 
 data Bullet = Bullet {
     pos :: Point, 
     dir :: Direction,
@@ -34,8 +42,8 @@ data Bullet = Bullet {
     hbx :: HitboxUnit
 }
 
--- | Represents the current state of the game.
--- Is composed of the ship, asteroids, enemies, bullets, score, lives and level.
+-- | The current state of the game.
+-- Is composed of the active entities and game statistics.
 data GameState = Play {
     ship      :: Ship,
     asteroids :: [Asteroid],
@@ -43,16 +51,19 @@ data GameState = Play {
     bullets   :: [Bullet],
     score     :: Int,
     lives     :: Int,
-    level     :: Int
+    level     :: Int,
+    time      :: Float
 } | GameOver
 
 initialState :: GameState
+-- initialState = GameOver
 initialState = Play {
     ship      = Ship { pos = (0, 0), dir = (0, 0), spd = (0, 0), hbx = (10, 10) },
     asteroids = [],
     enemies   = [],
     bullets   = [],
     score     = 0,
-    lives     = 3,
-    level     = 1
+    lives     = 1,
+    level     = 1,
+    time      = 0
 }
