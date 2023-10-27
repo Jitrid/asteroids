@@ -19,9 +19,8 @@ data GameState = Play {
 } | GameOver
 
 initialState :: GameState
--- initialState = GameOver
 initialState = Play {
-    ship      = Ship { pos = (0, 0), dir = (0, 0), spd = (0, 0), hbx = (10, 10) },
+    ship      = Ship { shipPos = [(-25,-25), (0,50), (25,-25), (-25,-25)], shipDir = (0, 0), shipSpd = (0, 0), shipHbx = (10, 10) },
     asteroids = [],
     enemies   = [],
     bullets   = [],

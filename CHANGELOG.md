@@ -1,8 +1,12 @@
 # Revision history for Asteroids
 
+## 0.1.0.5 -- 27-10-2023
+
+* Implement initial drawing mechanics and just data types.
+
 ## 0.1.0.4 -- 27-10-2023
 
-* Adjust pause keybind to escape button
+* Adjust pause keybind to escape button.
 
 ## 0.1.0.3 -- 27-10-2023
 
