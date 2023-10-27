@@ -15,13 +15,22 @@ adjust f g
   where g' = g { lives = f (lives g) 1 }
 
 handleEvents :: Event -> GameState -> GameState
+-- pausing the game
+handleEvents (EventKey (SpecialKey s) Down _ _) gstate
+    | paused gstate = pause False
+    | otherwise     = pause True
+        where 
+            pause :: Bool -> GameState
+            pause b = if s == KeyEsc then gstate { paused = b } else gstate
+-- mouse inpit
 handleEvents (EventKey (MouseButton m) Down _ _) gstate
     | paused gstate = gstate
     | otherwise = case m of 
         LeftButton  -> adjust (+) gstate
         RightButton -> adjust (-) gstate
+-- keyboard input
 handleEvents (EventKey (Char c) Down _ _) gstate
-    | paused gstate = if c == 'p' then gstate { paused = False } else gstate
+    | paused gstate = gstate
     | otherwise = case c of 
         'w' -> up
         's' -> down
@@ -31,6 +40,7 @@ handleEvents (EventKey (Char c) Down _ _) gstate
         where
             up   = adjust (+) gstate
             down = adjust (-) gstate
+-- default
 handleEvents _ gstate = gstate
 
 simulate :: Float -> GameState -> GameState
