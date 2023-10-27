@@ -52,7 +52,8 @@ data GameState = Play {
     score     :: Int,
     lives     :: Int,
     level     :: Int,
-    time      :: Float
+    time      :: Float,
+    paused    :: Bool
 } | GameOver
 
 initialState :: GameState
@@ -63,7 +64,8 @@ initialState = Play {
     enemies   = [],
     bullets   = [],
     score     = 0,
-    lives     = 1,
+    lives     = 3,
     level     = 1,
-    time      = 0
+    time      = 0,
+    paused    = False
 }
