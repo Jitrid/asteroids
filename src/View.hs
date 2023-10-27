@@ -9,9 +9,9 @@ renderGame = pure . viewPure
 
 viewPure :: GameState -> Picture
 viewPure GameOver = color red (text "Game Over!")
-viewPure (Play _ _ _ _ _ lives _ _ paused)
-  | paused    = translate (-500) 0 (scale 0.5 1 (color white (text "Game has been paused")))
-  | otherwise = case lives of
+viewPure gstate
+  | paused gstate = translate (-500) 0 (scale 0.5 1 (color white (text "Game has been paused")))
+  | otherwise     = case lives gstate of
       1 -> color green (text "1") -- ♡
       2 -> color green (text "2")
       3 -> color green (text "3")

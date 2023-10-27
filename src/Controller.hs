@@ -16,11 +16,12 @@ adjust f g
 
 handleEvents :: Event -> GameState -> GameState
 handleEvents (EventKey (MouseButton m) Down _ _) gstate
-    | m == LeftButton  =  adjust (+) gstate
-    | m == RightButton =  adjust (-) gstate
-    | otherwise        =  gstate
+    | paused gstate = gstate
+    | otherwise = case m of 
+        LeftButton  -> adjust (+) gstate
+        RightButton -> adjust (-) gstate
 handleEvents (EventKey (Char c) Down _ _) gstate
-    | paused gstate && c == 'p' = gstate { paused = False }
+    | paused gstate = if c == 'p' then gstate { paused = False } else gstate
     | otherwise = case c of 
         'w' -> up
         's' -> down
