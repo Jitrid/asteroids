@@ -15,6 +15,10 @@ adjust f g
   where g' = g { lives = f (lives g) 1 }
 
 handleEvents :: Event -> GameState -> GameState
+-- starting a new game
+handleEvents (EventKey (Char 'n') Down _ _) _ = initialState
+-- stop game from crashing when pressing keys while game over
+handleEvents _ GameOver = GameOver
 -- pausing the game
 handleEvents (EventKey (SpecialKey s) Down _ _) gstate
     | paused gstate = pause False
@@ -22,12 +26,13 @@ handleEvents (EventKey (SpecialKey s) Down _ _) gstate
         where 
             pause :: Bool -> GameState
             pause b = if s == KeyEsc then gstate { paused = b } else gstate
--- mouse inpit
+-- mouse input
 handleEvents (EventKey (MouseButton m) Down _ _) gstate
-    | paused gstate = gstate
+    | paused gstate = gstate -- freeze game when paused
     | otherwise = case m of 
         LeftButton  -> adjust (+) gstate
         RightButton -> adjust (-) gstate
+        _           -> gstate
 -- keyboard input
 handleEvents (EventKey (Char c) Down _ _) gstate
     | paused gstate = gstate
@@ -36,7 +41,7 @@ handleEvents (EventKey (Char c) Down _ _) gstate
         's' -> down
         'a' -> down
         'd' -> up
-        'p' -> gstate { paused = True }
+        _   -> gstate
         where
             up   = adjust (+) gstate
             down = adjust (-) gstate
@@ -57,5 +62,5 @@ simulateGame :: Float -> GameState -> IO GameState
 simulateGame _ GameOver = return GameOver
 simulateGame sec gstate
     | paused gstate         = return gstate
-    | time gstate + sec > 5 = return $ adjust (-) gstate { time = 0 }
+    | time gstate + sec > 10 = return $ adjust (-) gstate { time = 0 }
     | otherwise             = return $ gstate { time = time gstate + sec }

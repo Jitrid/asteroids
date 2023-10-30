@@ -1,5 +1,10 @@
 # Revision history for Asteroids
 
+## 0.1.0.6 -- 30-10-2023
+
+* Finalise user input.
+* Implement temporary functions to centre text (picture). 
+
 ## 0.1.0.5 -- 27-10-2023
 
 * Implement initial drawing mechanics and just data types.

@@ -17,6 +17,7 @@ data Difficulty = Easy | Normal | Hard | Extreme deriving (Eq, Show)
 -- It is the only entity that can be controlled by the player.
 data Ship = Ship {
     shipPos :: Path,
+    shipRot :: Float,
     shipDir :: Direction,
     shipSpd :: Velocity,
     shipHbx :: HitboxUnit
