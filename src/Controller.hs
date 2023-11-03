@@ -4,7 +4,7 @@
 module Controller where
 
 import Model
-import Graphics.Gloss
+import Common
 import Graphics.Gloss.Interface.IO.Game
 
 adjust :: (Int -> Int -> Int) -> GameState -> GameState
@@ -15,8 +15,9 @@ adjust f g
   where g' = g { lives = f (lives g) 1 }
 
 handleEvents :: Event -> GameState -> GameState
+-- handleEvents event gs = traceShow event gs
 -- starting a new game
-handleEvents (EventKey (Char 'n') Down _ _) _ = initialState
+handleEvents (EventKey (Char 'N') Down (Modifiers Down Up Up) _) _ = initialState
 -- stop game from crashing when pressing keys while game over
 handleEvents _ GameOver = GameOver
 -- pausing the game
@@ -39,21 +40,18 @@ handleEvents (EventKey (Char c) Down _ _) gstate
     | otherwise = case c of 
         'w' -> up
         's' -> down
-        'a' -> down
-        'd' -> up
+        'a' -> gstate {
+            ship = Common.rotate 0.2 (ship gstate)
+        } -- rotate left
+        'd' -> gstate {
+            ship = Common.rotate (-0.2) (ship gstate)
+        } -- rotate right
         _   -> gstate
         where
             up   = adjust (+) gstate
             down = adjust (-) gstate
 -- default
 handleEvents _ gstate = gstate
-
-simulate :: Float -> GameState -> GameState
-simulate _ GameOver = GameOver
-simulate sec gstate
-    | paused gstate         = gstate
-    | time gstate + sec > 2 = adjust (-) gstate { time = 0 }
-    | otherwise             = gstate { time = time gstate + sec }
 
 handleInput :: Event -> GameState -> IO GameState
 handleInput event gstate = return (handleEvents event gstate)
@@ -62,5 +60,6 @@ simulateGame :: Float -> GameState -> IO GameState
 simulateGame _ GameOver = return GameOver
 simulateGame sec gstate
     | paused gstate         = return gstate
-    | time gstate + sec > 10 = return $ adjust (-) gstate { time = 0 }
-    | otherwise             = return $ gstate { time = time gstate + sec }
+    -- | time gstate + sec > 10 = return $ adjust (-) gstate { time = 0 }
+    -- | otherwise             = return $ gstate { time = time gstate + sec }
+    | otherwise = return gstate

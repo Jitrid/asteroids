@@ -17,9 +17,9 @@ data Difficulty = Easy | Normal | Hard | Extreme deriving (Eq, Show)
 -- It is the only entity that can be controlled by the player.
 data Ship = Ship {
     shipPos :: Path,
-    shipRot :: Float,
     shipDir :: Direction,
     shipSpd :: Velocity,
+    shipRot :: Float,
     shipHbx :: HitboxUnit
 }
 
@@ -54,3 +54,14 @@ class Drawable a where
 
 instance Drawable Ship where
     draw s = color white (line (shipPos s))
+
+class Rotation a where
+    rotate :: Float -> a -> a
+
+instance Rotation Ship where
+    rotate r s = s {
+        shipPos = map (rotate' r) (shipPos s)
+    }
+        where
+            rotate' :: Float -> Point -> Point
+            rotate' r' (x,y) = (x * cos r' - y * sin r', x * sin r' + y * cos r')
