@@ -1,5 +1,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE InstanceSigs #-}
 
 module Common where
 
@@ -89,6 +90,17 @@ instance Drawable Bullet where
 class Move a where
     move :: Float -> a -> a
 
+instance Move Ship where
+    -- move :: Float -> Ship -> Ship
+    move deltaTime ship = ship {
+            shipCtr = newLocation,
+            shipPos = shipPos ship
+        } 
+        where
+            (locX, locY) = shipCtr ship
+            (dx, dy)     = shipSpd ship
+            newLocation  = (locX + dx * deltaTime, locY + dy * deltaTime)
+
 instance Move Asteroid where
     -- move :: Float -> Asteroid -> Asteroid
     move deltaTime asteroid = asteroid { astPos = (newX, newY) }
@@ -96,7 +108,6 @@ instance Move Asteroid where
             (currentX, currentY) = astPos asteroid
             (velocityX, velocityY) = astSpd asteroid
 
-            -- Calculate new position
             newX = currentX + velocityX * deltaTime
             newY = currentY + velocityY * deltaTime
 
@@ -110,7 +121,6 @@ instance Move Enemy where
             (currentX, currentY) = enemyPos enemy
             (velocityX, velocityY) = enemySpd enemy
 
-            -- Calculate new position
             newX = currentX + velocityX * deltaTime
             newY = currentY + velocityY * deltaTime
 
@@ -126,7 +136,26 @@ instance Move Bullet where
             speed =  fst (bulletSpd bullet)
             (vx, vy) = bulletDir bullet
 
--- | Update function
+-- | Player Rotation
+
+class Rotation a where
+    rotate :: Float -> a -> a
+
+instance Rotation Ship where
+    -- rotate :: Float -> Ship -> Ship
+    rotate dt ship = ship { shipDir = if shipRot ship /= 0
+                                      then (cosR * dx - sinR * dy, sinR * dx + cosR * dy)
+                                      else shipDir ship 
+                                    }
+        where
+            rotationAmount = shipRot ship * dt
+            cosR = cos rotationAmount
+            sinR = sin rotationAmount
+            (dx, dy) = shipDir ship
+            rotationSpeed = 1.05
+            angleChange = rotationSpeed * dt
+
+-- | Miscellaneous
 
 rotatePoint :: Float -> Point -> Point -> Point
 rotatePoint angle (cx, cy) (x, y) =

@@ -33,9 +33,9 @@ handleEvents (EventKey (MouseButton m) Down _ _) gstate
         LeftButton  -> gstate { bullets = newBullet : bullets gstate }
          where
              newBullet = Bullet {
-                 bulletPos = shipCtr (ship gstate),
+                 bulletPos = shipCtr (ship gstate) `addVectors` (shipDir (ship gstate) `scaleVector` 30),
                  bulletDir = normalize (shipDir (ship gstate)),
-                 bulletSpd = (1000, 1000) ,
+                 bulletSpd = (300, 300) ,
                  bulletHbx = (10, 10)
              }
         _           -> gstate
@@ -91,9 +91,9 @@ simulateGame deltaTime gstate
         let bs = bullets gstate
         let ens = enemies gstate
 
-        let rotatedShip = updateRotation deltaTime s
+        let rotatedShip = Common.rotate deltaTime s
         let shipWithThrust = (if forward rotatedShip then applyThrust else applyBrake) rotatedShip
-        let finalShip = moveShipPath deltaTime shipWithThrust
+        let finalShip = move deltaTime shipWithThrust
         let updatedBullets = map (move deltaTime) bs
         let updatedAsteroids = map (move deltaTime) asts
 
@@ -154,6 +154,25 @@ simulateGame deltaTime gstate
                     enemies = newEnemies
                 }
 
+-- | Ship Movement
+
+applyThrust :: Ship -> Ship
+applyThrust ship = ship { shipSpd = clampedNewVelocity }
+    where
+        thrustAmount       = 10
+        (dx, dy)           = shipDir ship
+        angle              = atan2 dy dx
+        newVelocity        = shipSpd ship `addVectors` (cos angle * thrustAmount, sin angle * thrustAmount)
+        clampedNewVelocity = if magnitude newVelocity > 400 then newVelocity `scaleVector` (400 / magnitude newVelocity)
+                                else newVelocity
+
+applyBrake :: Ship -> Ship
+applyBrake ship = ship { shipSpd = newVelocity }
+    where
+        brakeAmount = 0.95
+        newVelocity = if magnitude (shipSpd ship) > 0 then scaleVector (shipSpd ship) brakeAmount
+                        else (0, 0)
+
 -- | Collision Detection
 
 collisionDetected :: (Point, HitboxUnit) -> (Point, HitboxUnit) -> Bool
@@ -191,11 +210,10 @@ splitAsteroids asteroids ship = foldr split ([], []) asteroids
 -- | Enemy Logic
 
 shortestPathToPlayer :: Enemy -> Ship -> Direction
-shortestPathToPlayer enemy ship = normalize' (dx ,dy)
+shortestPathToPlayer enemy ship = normalize (dx ,dy)
     where
         dx = fst (shipCtr ship) - fst (enemyPos enemy)
         dy = snd (shipCtr ship) - snd (enemyPos enemy)
-        normalize' (x, y) = let mag = sqrt (x*x + y*y) in (x / mag, y / mag)
 
 fireEnemyBullet :: Enemy -> Ship -> (Enemy, Maybe Bullet)
 fireEnemyBullet enemy playerShip
@@ -204,51 +222,9 @@ fireEnemyBullet enemy playerShip
             newEnemy = enemy { enemyFireCD = 2.0 }
 
         in (newEnemy, Just Bullet {
-            bulletPos = enemyPos enemy,
+            bulletPos = enemyPos enemy `addVectors` (bulletDir `scaleVector` 25),
             bulletDir = bulletDir,
             bulletSpd = (300, 300),
             bulletHbx = (10, 10)
         })
     | otherwise = (enemy, Nothing)
-
-updateRotation :: Float -> Ship -> Ship
-updateRotation dt ship =
-    ship { shipDir = if shipRot ship /= 0
-                     then (cosR * dx - sinR * dy, sinR * dx + cosR * dy)
-                     else shipDir ship }
-    where
-        rotationAmount = shipRot ship * dt
-        cosR = cos rotationAmount
-        sinR = sin rotationAmount
-        (dx, dy) = shipDir ship
-        rotationSpeed = 1.05
-        angleChange = rotationSpeed * dt
-
-rotateShipPath :: Ship -> Ship
-rotateShipPath ship = ship { shipPos = rotatedPath }
-  where
-    (dx, dy) = shipDir ship
-    rotationAngle = atan2 dy dx * 180 / pi
-    center = shipCtr ship
-    rotatedPath = map (rotatePoint rotationAngle center) (shipPos ship)
-
-
-rotateShip :: Float -> Ship -> Ship
-rotateShip r ship = ship { shipPos = map (rotatePoint r (shipCtr ship)) (shipPos ship) }
-
-applyThrust :: Ship -> Ship
-applyThrust ship = ship { shipSpd = clampedNewVelocity }
-    where
-        thrustAmount       = 10
-        (dx, dy)           = shipDir ship
-        angle              = atan2 dy dx
-        newVelocity        = shipSpd ship `addVectors` (cos angle * thrustAmount, sin angle * thrustAmount)
-        clampedNewVelocity = if magnitude newVelocity > 400 then newVelocity `scaleVector` (400 / magnitude newVelocity)
-                                else newVelocity
-
-applyBrake :: Ship -> Ship
-applyBrake ship = ship { shipSpd = newVelocity }
-    where
-        brakeAmount = 0.95
-        newVelocity = if magnitude (shipSpd ship) > 0 then scaleVector (shipSpd ship) brakeAmount
-                        else (0, 0)

@@ -37,20 +37,15 @@ initialState = Play {
                 paused    = False
               }
 
-moveShipPath :: Float -> Ship -> Ship
-moveShipPath deltaTime ship = ship {
-    shipCtr = newLocation,
-    shipPos = shipPos ship
-} where
-    (locX, locY) = shipCtr ship
-    (dx, dy)     = shipSpd ship
-    newLocation  = (locX + dx * deltaTime, locY + dy * deltaTime)
-
 createFlameShape :: Ship -> [Point]
 createFlameShape s =
   let center = shipCtr s
-      flamePoints = [(-5, -10), (0, -20), (5, -10)]
-  in map (translatePoint center) flamePoints
+      (dirX , dirY) = shipDir s
+      flameLength = 20
+      baseFlamePoint = (fst center - flameLength * dirX, snd center - flameLength * dirY)
+      flameWidth = flameLength * 0.5
+      flamePoints = [baseFlamePoint]
+  in flamePoints
 
 splitAsteroid :: Asteroid -> [Asteroid]
 splitAsteroid ast
