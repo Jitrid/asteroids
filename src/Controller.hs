@@ -11,22 +11,11 @@ import Asteroid
 import Graphics.Gloss.Interface.IO.Game
 import Data.Maybe (catMaybes)
 
-adjust :: (Int -> Int -> Int) -> GameState -> GameState
-adjust f g
-  | lives g' >= 3 = g' { lives = 3 }
-  | lives g' <= 0 = GameOver
-  | otherwise     = g'
-  where g' = g { lives = f (lives g) 1 }
-
-normalize :: (Float, Float) -> (Float, Float)
-normalize (dx, dy) =
-    let magnitude = sqrt (dx * dx + dy * dy)
-    in if magnitude == 0 then (0, 0) else (dx / magnitude, dy / magnitude)
+-- | Handle user input
 
 handleEvents :: Event -> GameState -> GameState
--- handleEvents event gs = traceShow event gs
 -- starting a new game
-handleEvents (EventKey (Char 'N') Down (Modifiers Down Up Up) _) _ = initialState
+handleEvents (EventKey (Char 'N') Down _ _) _ = initialState
 -- stop game from crashing when pressing keys while game over
 handleEvents _ GameOver = GameOver
 -- pausing the game
@@ -48,65 +37,53 @@ handleEvents (EventKey (MouseButton m) Down _ _) gstate
                  bulletSpd = (1000, 1000) ,
                  bulletHbx = (10, 10)
              }
-        RightButton -> adjust (-) gstate
         _           -> gstate
 -- keyboard input
 handleEvents (EventKey (Char c) Down _ _) gstate
     | paused gstate = gstate
-    | otherwise = case (c, Down) of
-        ('w', _) ->  gstate {
+    | otherwise = case c of
+        'w' ->  gstate {
           ship = (ship gstate) { movingForward = True}
         }
-        ('s',_) -> gstate {
+        's' -> gstate {
             ship = applyBrake (ship gstate) }
-        ('a',_) -> gstate {
+        'a' -> gstate {
             ship = (ship gstate) { shipRot = -1}
         } -- rotate left
-        ('d',_) -> gstate {
+        'd' -> gstate {
             ship = (ship gstate) { shipRot = 1 }
         } -- rotate right
-
         _   -> gstate
-
 handleEvents (EventKey (Char c) Up _ _) gstate
--- handle Key UP
     | paused gstate = gstate
-    | otherwise = case (c, Up) of
-        ('w', _) ->  gstate {
+    | otherwise = case c of
+        'w' ->  gstate {
              ship = (ship gstate) { movingForward = False } }
-        -- ('s',_) -> gstate {
-        --     ship = (ship gstate) { shipSpd = (0, 0) } }
-        ('a',_) -> gstate {
+        'a' -> gstate {
             ship = (ship gstate) { shipRot = 0}
         } -- rotate left
-        ('d',_) -> gstate {
+        'd' -> gstate {
             ship = (ship gstate) { shipRot = 0 }
         } -- rotate right
         _   -> gstate
-
-
-
-
-
 -- default
 handleEvents _ gstate = gstate
 
 handleInput :: Event -> GameState -> IO GameState
 handleInput event gstate = return (handleEvents event gstate)
 
+-- | Other
+
 simulateGame :: Float -> GameState -> IO GameState
 simulateGame deltaTime gstate@(Play { ship = s, asteroids = asts, bullets = bs, enemies = ens }) = do
-    --let rotatedShip = updateRotation deltaTime s
-    --let finalShip = moveShipPath deltaTime rotatedShip
     let rotatedShip = updateRotation deltaTime s
     let shipWithThrust = (if movingForward rotatedShip then applyThrust else applyBrake) rotatedShip
     let finalShip = moveShipPath deltaTime shipWithThrust
-    let updatedBullets = map (moveBullet deltaTime) bs
+    let updatedBullets = map (move deltaTime) bs
     let updatedAsteroids = updateAsteroids deltaTime asts
     
-
     -- Update enemies
-    enemyActions <- mapM (\enemy -> fireEnemyBullet (updateEnemy deltaTime enemy) s) ens
+    enemyActions <- mapM (\enemy -> fireEnemyBullet (move deltaTime enemy) s) ens
     let (finalUpdatedEnemies, newEnemyBullets) = unzip enemyActions
     let allBullets = updatedBullets ++ catMaybes newEnemyBullets
 
@@ -117,14 +94,6 @@ simulateGame deltaTime gstate@(Play { ship = s, asteroids = asts, bullets = bs, 
     let survivingBullets = filter (not . isOutOfBounds . bulletPos) allBullets
 
     -- Check for collisions and kill asteroids
-    
-    --let notcollidedAsteroids = filter (not . checkShipAsteroidCollision finalShip) notshotAsteroids
-    -- Check for collisions and update asteroids
-    -- Check for collisions and update asteroids
-    --let (collidedAsteroids, notcollidedAsteroids) = splitAsteroids notshotAsteroids finalShip
-    --let newAsteroidsFromCollision = concatMap splitAsteroid collidedAsteroids
-    --let aftercollisionAsteroids = notcollidedAsteroids ++ newAsteroidsFromCollision
-
     let (shotAsteroids, notshotAsteroids) = checkBulletAsteroidCollision survivingBullets survivingAsteroids
     let newAsteroidsfromsplit = concatMap splitAsteroid shotAsteroids
     let allAsteroids = notshotAsteroids ++ newAsteroidsfromsplit
@@ -144,14 +113,6 @@ simulateGame deltaTime gstate@(Play { ship = s, asteroids = asts, bullets = bs, 
         time = time gstate + deltaTime,
         enemies = newEnemies
     }
-
---Hier is een begin aan collision enkel voor asteroids. is POC 
--- collisionDetected  :: Bullet -> Asteroid -> Bool
--- collisionDetected bullet asteroid = 
---     let (bx, by) = bulletPos bullet
---         (ax, ay) = astPos asteroid
---         distance = sqrt ((bx - ax)^2 + (by - ay)^2)
---     in distance < (astSize asteroid + 2)
 
 collisionDetected :: (Point, HitboxUnit) -> (Point, HitboxUnit) -> Bool
 collisionDetected ((x1, y1), (w1, h1)) ((x2,y2), (w2, h2)) =
@@ -177,32 +138,9 @@ splitAsteroids asteroids ship = foldr split ([], []) asteroids
         | checkShipAsteroidCollision ship ast = (ast : collided, notCollided)
         | otherwise = (collided, ast : notCollided)
 
-
 updateAsteroids :: Float -> [Asteroid] -> [Asteroid]
-updateAsteroids deltaTime = map (moveAsteroid deltaTime)
+updateAsteroids deltaTime = map (move deltaTime)
 
-updateEnemies :: Float -> [Enemy] -> [Enemy]
-updateEnemies deltaTime = map (moveEnemy deltaTime)
-
-updateEnemy :: Float -> Enemy -> Enemy
-updateEnemy deltaTime enemy =
-    enemy {
-        enemyPos = (newX, newY), -- Update position
-        enemyFireCD = newCooldown -- Update fire cooldown
-    }
-    where
-        -- Update Position
-        (currentX, currentY) = enemyPos enemy
-        (velocityX, velocityY) = enemySpd enemy
-        newX = currentX + velocityX * deltaTime
-        newY = currentY + velocityY * deltaTime
-
-        -- Update Cooldown
-        newCooldown = max 0 (enemyFireCD enemy - deltaTime)
-
-isOutOfBounds :: Point -> Bool
-isOutOfBounds (x, y) = x < -700 || x > 700 || y < -1200 || y > 1200
---normalize and magnitude didn't work, so I made my own normalize function.
 shortestPathToPlayer :: Enemy -> Ship -> Direction
 shortestPathToPlayer enemy ship = normalize' (dx ,dy)
     where
@@ -224,7 +162,6 @@ fireEnemyBullet enemy playerShip
         })
     | otherwise = return (enemy, Nothing)
 
---Ai ai ai , dit kunnen we samenvoegen met de shouldSpawnEnemy functie, nu is het een beetje dubbelop, maar ik heb geen zin om het te veranderen. 
 shouldSpawnAsteroid :: IO Bool
 shouldSpawnAsteroid = do
     let probability :: Double
@@ -241,77 +178,6 @@ shouldSpawnEnemy = do
     randomValue <- randomRIO (0.0, 1.0 :: Double)
     return (randomValue < probability)
 
-
-
-
-moveAsteroid :: Float -> Asteroid -> Asteroid
-moveAsteroid deltaTime asteroid = asteroid {
-    astPos = (newX, newY)
-}
-  where
-    -- Current position of the asteroid
-    (currentX, currentY) = astPos asteroid
-
-    -- Current velocity (speed and direction) of the asteroid
-    (velocityX, velocityY) = astSpd asteroid
-
-    -- Calculate new position
-    newX = currentX + velocityX * deltaTime
-    newY = currentY + velocityY * deltaTime
-
-
-moveEnemy :: Float -> Enemy -> Enemy
-moveEnemy deltaTime enemy = enemy {
-    enemyPos = (newX, newY)
-}
-  where
-    -- Current position of the asteroid
-    (currentX, currentY) = enemyPos enemy
-
-    -- Current velocity (speed and direction) of the asteroid
-    (velocityX, velocityY) = enemySpd enemy
-
-    -- Calculate new position
-    newX = currentX + velocityX * deltaTime
-    newY = currentY + velocityY * deltaTime
-
-moveBullet :: Float -> Bullet -> Bullet
-moveBullet deltaTime bullet = bullet {
-    bulletPos = (x + vx * speed * deltaTime, y + vy * speed * deltaTime)
-} where
-    (x, y) = bulletPos bullet
-    speed =  fst (bulletSpd bullet)
-    (vx, vy) = bulletDir bullet
-
---     let updatedShip = updateRotation deltaTime $ updateShip deltaTime s
---     in return gstate {
---         ship = updateShip deltaTime s,
---         time = time gstate + deltaTime
---     }
---     where 
---         updateShip = Model.moveShipPath
---         updateRotation dt ship = ship { shipRot = 150 } 
--- simulateGame _ gstate = return gstate 
-
- -- No update if game is over
--- ADD PAUSING HERE
-
--- updateRotation :: Float -> Ship -> Ship
--- updateRotation dt ship = ship { shipDir = newDirection }
---   where
---     rotationSpeed = 1 -- Adjust this value for slower rotation
---     angleChange = rotDir ship * rotationSpeed * dt
---     (dx, dy) = shipDir ship
---     currentAngle = atan2 dy dx
---     newAngle = currentAngle + angleChange
---     newDirection = (cos newAngle, sin newAngle)
-
--- updateRotation' :: Float -> Ship -> Ship
--- updateRotation' dt ship = ship { shipRot = newRot }
---   where
---     rotationSpeed = 1 -- Rotation speed factor
---     newRot = shipRot ship + rotDir ship * rotationSpeed * dt
-
 updateRotation :: Float -> Ship -> Ship
 updateRotation dt ship = 
     ship { shipDir = if shipRot ship /= 0 
@@ -321,13 +187,11 @@ updateRotation dt ship =
         rotationSpeed = 1.05
         angleChange = rotationSpeed * dt
 
-
-
 rotateShipPath :: Ship -> Ship
 rotateShipPath ship = ship { shipPos = rotatedPath }
   where
     (dx, dy) = shipDir ship
-    rotationAngle = atan2 dx dy * 180 / pi
+    rotationAngle = atan2 dy dx * 180 / pi
     center = shipCenter (shipPos ship)
     rotatedPath = map (rotatePoint rotationAngle center) (shipPos ship)
 
@@ -343,48 +207,15 @@ applyThrust ship = ship { shipSpd = clampedNewVelocity }
   where
     thrustAmount = 10
     (dx, dy) = shipDir ship
-    angle = atan2 dx dy
+    angle = atan2 dy dx
     newVelocity = (shipSpd ship) `addVectors` (cos angle * thrustAmount, sin angle * thrustAmount)
     clampedNewVelocity = if magnitude newVelocity > 600 then
                            newVelocity `scaleVector` (600 / magnitude newVelocity)
                          else
                            newVelocity
 
--- applyBrake :: Ship -> Ship
--- applyBrake ship = ship { shipSpd = newVelocity }
---   where
---     brakeAmount = 20
---     (dx, dy) = shipSpd ship
---     velocityMagnitude = sqrt (dx * dx + dy * dy)
-
---     newVelocity = if velocityMagnitude > brakeAmount then
---                     (dx - (dx / velocityMagnitude * brakeAmount),
---                      dy - (dy / velocityMagnitude * brakeAmount))
---                   else
---                     (0, 0) -- Willen we naar achter bewegen als we al stilstaan? Dankjewel copilot voor deze lijpe comment generatie :D
 applyBrake :: Ship -> Ship
 applyBrake ship = ship { shipSpd = newVelocity }
   where 
     brakeAmount = 0.95
-    --newVelocity = (shipSpd ship) `scaleVector` (1 - breakAmount / magnitude (shipSpd ship))
     newVelocity = if magnitude (shipSpd ship) > 0 then scaleVector (shipSpd ship) brakeAmount else (0, 0)
-
-
-magnitude :: Velocity -> Float
-magnitude = sqrt . magnitudeSquared
-
-magnitudeSquared :: Velocity -> Float
-magnitudeSquared = dotProduct
-
---Vector Math
-addVectors :: (Float, Float) -> (Float, Float) -> (Float, Float)
-addVectors (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
-
-scaleVector :: (Float, Float) -> Float -> (Float, Float)
-scaleVector (x, y) s = (x * s, y * s)
-
-dotProduct :: (Float, Float) -> Float
-dotProduct (x, y) = x * x + y * y
-
-rotateVector :: Float -> Direction -> Direction
-rotateVector r (x, y) = (cos r * x - sin r * y, sin r * x + cos r * y)

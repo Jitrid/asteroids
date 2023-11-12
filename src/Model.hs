@@ -57,14 +57,12 @@ moveShipPath deltaTime ship = ship {
             | x > (max /2)   = x - max
             | otherwise = x
 
-
-
 renderShip :: Ship -> Picture
 renderShip ship = Pictures $ drawPath rotatedPath
   where
     center = shipCenter (shipPos ship)
     (dx, dy) = shipDir ship
-    rotationAngle = atan2 dx dy
+    rotationAngle = atan2 dy dx
 
     rotatedPath = map (rotatePoint rotationAngle center) (shipPos ship)
     drawPath path = map (\(x, y) -> translate x y $ color white $ line path) path
@@ -96,7 +94,6 @@ splitAsteroid ast
     newSize = astSize ast / 2
     (x, y) = astPos ast
     offset = newSize / 2 -- adjust as needed
-
 
 renderFlame :: Ship -> Float -> Picture
 renderFlame s t =
