@@ -1,5 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Common where
 
@@ -20,13 +20,13 @@ data Difficulty = Easy | Normal | Hard | Extreme deriving (Eq, Show)
 -- | The ship is the player's spaceship.
 -- It is the only entity that can be controlled by the player.
 data Ship = Ship {
-    shipLocation :: Point,   
-    shipPos      :: Path,
-    movingForward :: Bool,
-    shipDir      :: Direction,
-    shipSpd      :: Velocity,
-    shipRot      :: Float,
-    shipHbx      :: HitboxUnit
+    shipCtr :: Point,   
+    shipPos :: Path,
+    forward :: Bool,
+    shipDir :: Direction,
+    shipSpd :: Velocity,
+    shipRot :: Float,
+    shipHbx :: HitboxUnit
 }
 
 -- | An asteroid floats around in space, and can be destroyed by the player.
@@ -65,7 +65,7 @@ instance Drawable Ship where
     -- draw :: Ship -> Picture
     draw ship = translate locX locY $ Rotate rotationAngleDegree $ color white $ line path
         where
-            (locX, locY) = shipLocation ship
+            (locX, locY) = shipCtr ship
             (dx, dy)     = shipDir ship
             rotationAngle = atan2 dx dy
             rotationAngleDegree = rotationAngle * 180 / pi
@@ -82,48 +82,12 @@ instance Drawable Enemy where
 
 instance Drawable Bullet where
     -- draw :: Bullet -> Picture
-    draw bullet = uncurry translate (bulletPos bullet) $ color red $ circleSolid 1.0
+    draw bullet = uncurry translate (bulletPos bullet) $ color red $ circleSolid 2.5
 
--- |
+-- | Collision functions
 
-class Rotation a where
-    rotate :: Float -> a -> a
-
--- instance Rotation Ship where
---     rotate r s = s {
---         shipPos = map (rotate' r) (shipPos s)
---     }
---         where
---             rotate' :: Float -> Point -> Point
---             rotate' r' (x,y) = (x * cos r' - y * sin r', x * sin r' + y * cos r')
-
-
-instance Rotation Ship where
-    -- rotate dt s = 
-    --     let currentRot = shipRot s 
-    --         newRot = currentRot + 0.1 * dt 
-    --     in s {shipRot = newRot}
-
-
-
-
-    rotate r s = s {
-         shipPos = map (rotateAroundCenter r (shipCenter (shipPos s))) (shipPos s)
-     }
-        where
-             rotateAroundCenter :: Float -> Point -> Point -> Point
-             rotateAroundCenter r' center (x, y) =
-                let
-                 -- Translate point to origin
-                (x', y') = (x - cx, y - cy)
-                cx = fst center
-                cy = snd center
-
-                -- Rotate point
-                (xRot, yRot) = (x' * cos r' - y' * sin r', x' * sin r' + y' * cos r')
-
-               -- Translate point back
-                in (xRot + cx, yRot + cy)
+collisionDetected :: (Point, HitboxUnit) -> (Point, HitboxUnit) -> Bool
+collisionDetected ((x1, y1), (w1, h1)) ((x2,y2), (w2, h2)) = abs (x1 - x2) * 2 < (w1 + w2) && abs (y1 - y2) * 2 < (h1 + h2)
 
 -- | Move function
 
@@ -168,14 +132,6 @@ instance Move Bullet where
             (vx, vy) = bulletDir bullet
 
 -- | Update function
-
-
-
-shipCenter :: Path -> Point
-shipCenter [xs,ys,zs,_] =
-    let n = 3
-        (sumX, sumY) = foldr (\(x, y) (accX, accY) -> (accX + x, accY + y)) (0, 0) [xs, ys, zs]
-    in (sumX / n, sumY / n)
 
 rotatePoint :: Float -> Point -> Point -> Point
 rotatePoint angle (cx, cy) (x, y) =

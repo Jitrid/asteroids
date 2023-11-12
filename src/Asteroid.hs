@@ -1,4 +1,5 @@
 module Asteroid where
+
 import System.Random (randomRIO)
 import Common
 
@@ -48,3 +49,19 @@ createRandomEnemy = do
         enemyDif = Easy,
         enemyFireCD = 2
     }
+
+shouldSpawnAsteroid :: IO Bool
+shouldSpawnAsteroid = do
+    let probability :: Double
+        probability = 0.1  -- 5%
+
+    randomValue <- randomRIO (0.0, 1.0 :: Double)
+    return (randomValue < probability)
+
+shouldSpawnEnemy :: IO Bool
+shouldSpawnEnemy = do
+    let probability :: Double
+        probability = 0.02  -- .1%
+
+    randomValue <- randomRIO (0.0, 1.0 :: Double)
+    return (randomValue < probability)

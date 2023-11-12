@@ -15,6 +15,7 @@ viewPure gstate
   | otherwise = pictures [pictures (map draw (asteroids gstate)),
                           pictures (map draw (enemies gstate)),
                           pictures (map draw (bullets gstate)),
-                          --  color white (text (show (shipRot (ship gstate)))), 
-                          --  color red (text (show (shipDir (ship gstate)))),
+                          renderFlame (ship gstate) (time gstate),
+                          color white (text (show (lives gstate))),
+                          color red (text (show (score gstate))),
                           draw (ship gstate)]
