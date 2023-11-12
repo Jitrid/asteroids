@@ -13,6 +13,11 @@ import Data.Maybe (catMaybes)
 
 -- | Handle user input
 
+-- + voor points
+addPoints :: Point -> Point -> Point
+addPoints (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
+
+
 handleEvents :: Event -> GameState -> GameState
 -- starting a new game
 handleEvents (EventKey (Char 'N') Down _ _) _ = initialState
@@ -32,7 +37,7 @@ handleEvents (EventKey (MouseButton m) Down _ _) gstate
         LeftButton  -> gstate { bullets = newBullet : bullets gstate }
          where
              newBullet = Bullet {
-                 bulletPos = head (shipPos (ship gstate) ++ [normalize (shipDir (ship gstate))]),  
+                 bulletPos =  shipLocation (ship gstate),  
                  bulletDir =  normalize (shipDir (ship gstate)),
                  bulletSpd = (1000, 1000) ,
                  bulletHbx = (10, 10)
@@ -48,10 +53,10 @@ handleEvents (EventKey (Char c) Down _ _) gstate
         's' -> gstate {
             ship = applyBrake (ship gstate) }
         'a' -> gstate {
-            ship = (ship gstate) { shipRot = -1}
+            ship = (ship gstate) { shipRot = 1}
         } -- rotate left
         'd' -> gstate {
-            ship = (ship gstate) { shipRot = 1 }
+            ship = (ship gstate) { shipRot = -1 }
         } -- rotate right
         _   -> gstate
 handleEvents (EventKey (Char c) Up _ _) gstate

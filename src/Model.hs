@@ -22,7 +22,7 @@ data GameState = Play {
 
 initialState :: GameState
 initialState = Play {
-    ship      = Ship { shipPos = [(-15,-15), (0,30), (15,-15), (-15,-15)], movingForward = False, shipDir = (0,1), shipSpd = (0, 0), shipRot = 0, shipHbx = (100, 100) },
+    ship      = Ship {shipLocation = (0,0), shipPos = [(-15,-15), (0,30), (15,-15), (-15,-15)], movingForward = False, shipDir = (0,1), shipSpd = (0, 0), shipRot = 0, shipHbx = (100, 100) },
     asteroids = [],
     enemies   = [],
     bullets   = [],
@@ -38,34 +38,22 @@ initialState = Play {
 -- Update Point based on direction and speed
 moveShipPath :: Float -> Ship -> Ship
 moveShipPath deltaTime ship = ship {
-    shipPos = wrappedShipPos
+    shipLocation = newLocation,
+    shipPos      = shipPos ship  
+} where
+    (locX, locY) = shipLocation ship
+    (dx, dy)     = shipSpd ship
+    newLocation  = (locX + dx * deltaTime, locY + dy * deltaTime)
 
-}  where
-        updatedShipPos = map (\(x, y) -> (x + dx * deltaTime, y + dy * deltaTime)) (shipPos ship)
-        updatedCenter = shipCenter updatedShipPos
-        wrappedCenter = wrapPos updatedCenter
-        (updatedCenterX, updatedCenterY) = updatedCenter
-        (wrappedCenterX, wrappedCenterY) = wrappedCenter
-        wrappedShipPos = map (\(x, y) -> (x + wrappedCenterX - updatedCenterX, y + wrappedCenterY - updatedCenterY)) updatedShipPos
-        screenW = 700
-        screenH = 1200
-        (dx, dy) = shipSpd ship
-        updatePoint (x, y) = (x + dx * deltaTime, y + dy * deltaTime)
-        wrapPos (x, y) = (wrapCoord x screenH, wrapCoord y screenW)
-        wrapCoord x max
-            | x < - (max/2) = x + max
-            | x > (max /2)   = x - max
-            | otherwise = x
 
 renderShip :: Ship -> Picture
-renderShip ship = Pictures $ drawPath rotatedPath
+renderShip ship = Translate locX locY $ Pictures $ drawPath rotatedPath
   where
-    center = shipCenter (shipPos ship)
-    (dx, dy) = shipDir ship
+    (locX, locY) = shipLocation ship
+    (dx, dy)     = shipDir ship
     rotationAngle = atan2 dy dx
-
-    rotatedPath = map (rotatePoint rotationAngle center) (shipPos ship)
-    drawPath path = map (\(x, y) -> translate x y $ color white $ line path) path
+    rotatedPath  = map (rotatePoint rotationAngle (0,0)) (shipPos ship)
+    drawPath path = map (\(x, y) -> translate x y $ color white $ circleSolid 2) path 
 
 rotatePoint :: Float -> Point -> Point -> Point
 rotatePoint angle (cx, cy) (x, y) =
@@ -76,7 +64,7 @@ rotatePoint angle (cx, cy) (x, y) =
 
 createFlameShape :: Ship -> [Point]
 createFlameShape s =
-  let center = shipCenter (shipPos s)
+  let center = shipLocation s
       flamePoints = [(-5, -10), (0, -20), (5, -10)]
   in map (translatePoint center) flamePoints
 

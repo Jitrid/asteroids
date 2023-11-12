@@ -20,12 +20,13 @@ data Difficulty = Easy | Normal | Hard | Extreme deriving (Eq, Show)
 -- | The ship is the player's spaceship.
 -- It is the only entity that can be controlled by the player.
 data Ship = Ship {
-    shipPos :: Path,
+    shipLocation :: Point,   
+    shipPos      :: Path,
     movingForward :: Bool,
-    shipDir :: Direction,
-    shipSpd :: Velocity,
-    shipRot :: Float,
-    shipHbx :: HitboxUnit
+    shipDir      :: Direction,
+    shipSpd      :: Velocity,
+    shipRot      :: Float,
+    shipHbx      :: HitboxUnit
 }
 
 -- | An asteroid floats around in space, and can be destroyed by the player.
