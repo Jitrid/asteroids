@@ -43,7 +43,7 @@ handleEvents (EventKey (MouseButton m) Down _ _) gstate
         LeftButton  -> gstate { bullets = newBullet : bullets gstate }
          where
              newBullet = Bullet {
-                 bulletPos = Common.shipCenter (ship gstate),
+                 bulletPos = head (shipPos (ship gstate) ++ [normalize (shipDir (ship gstate))]),  
                  bulletDir =  normalize (shipDir (ship gstate)),
                  bulletSpd = (1000, 1000) ,
                  bulletHbx = (10, 10)
@@ -60,10 +60,10 @@ handleEvents (EventKey (Char c) Down _ _) gstate
         ('s',_) -> gstate {
             ship = applyBrake (ship gstate) }
         ('a',_) -> gstate {
-            ship = (ship gstate) { rotDir = 1}
+            ship = (ship gstate) { shipRot = -1}
         } -- rotate left
         ('d',_) -> gstate {
-            ship = (ship gstate) { rotDir = -1 }
+            ship = (ship gstate) { shipRot = 1 }
         } -- rotate right
 
         _   -> gstate
@@ -77,10 +77,10 @@ handleEvents (EventKey (Char c) Up _ _) gstate
         -- ('s',_) -> gstate {
         --     ship = (ship gstate) { shipSpd = (0, 0) } }
         ('a',_) -> gstate {
-            ship = (ship gstate) { rotDir = 0}
+            ship = (ship gstate) { shipRot = 0}
         } -- rotate left
         ('d',_) -> gstate {
-            ship = (ship gstate) { rotDir = 0 }
+            ship = (ship gstate) { shipRot = 0 }
         } -- rotate right
         _   -> gstate
 
@@ -110,18 +110,28 @@ simulateGame deltaTime gstate@(Play { ship = s, asteroids = asts, bullets = bs, 
     let (finalUpdatedEnemies, newEnemyBullets) = unzip enemyActions
     let allBullets = updatedBullets ++ catMaybes newEnemyBullets
 
+    -- check for ship -asteroid colision: 
     --Kill outside of bounds asteroids, bullets and enemies
     let survivingAsteroids = filter (not . isOutOfBounds . astPos) updatedAsteroids
     let survivingEnemies = filter (not . isOutOfBounds . enemyPos) finalUpdatedEnemies
     let survivingBullets = filter (not . isOutOfBounds . bulletPos) allBullets
 
     -- Check for collisions and kill asteroids
-    let notshotAsteroids = checkBulletAsteroidCollision survivingBullets survivingAsteroids
-    let notcollidedAsteroids = filter (not . checkShipAsteroidCollision finalShip) notshotAsteroids
+    
+    --let notcollidedAsteroids = filter (not . checkShipAsteroidCollision finalShip) notshotAsteroids
+    -- Check for collisions and update asteroids
+    -- Check for collisions and update asteroids
+    --let (collidedAsteroids, notcollidedAsteroids) = splitAsteroids notshotAsteroids finalShip
+    --let newAsteroidsFromCollision = concatMap splitAsteroid collidedAsteroids
+    --let aftercollisionAsteroids = notcollidedAsteroids ++ newAsteroidsFromCollision
+
+    let (shotAsteroids, notshotAsteroids) = checkBulletAsteroidCollision survivingBullets survivingAsteroids
+    let newAsteroidsfromsplit = concatMap splitAsteroid shotAsteroids
+    let allAsteroids = notshotAsteroids ++ newAsteroidsfromsplit
 
     -- Spawn new Asteroid
     shouldSpawnAst <- shouldSpawnAsteroid
-    newAsteroids <- if shouldSpawnAst then fmap (:notshotAsteroids) createRandomAsteroid else return notshotAsteroids
+    newAsteroids <- if shouldSpawnAst then fmap (:allAsteroids) createRandomAsteroid else return allAsteroids
 
     -- Spawn new Enemy
     shouldSpawnEn <- shouldSpawnEnemy
@@ -148,13 +158,24 @@ collisionDetected ((x1, y1), (w1, h1)) ((x2,y2), (w2, h2)) =
     abs (x1 - x2) * 2 < (w1 + w2) &&
     abs (y1 - y2) * 2 < (h1 + h2)
 
-checkBulletAsteroidCollision :: [Bullet] -> [Asteroid] -> [Asteroid]
-checkBulletAsteroidCollision bullets = filter (\ast -> not (any (collisionDetected (astPos ast, astHbx ast) . (\b -> (bulletPos b, bulletHbx b))) bullets))
+checkBulletAsteroidCollision :: [Bullet] -> [Asteroid] -> ([Asteroid], [Asteroid])
+checkBulletAsteroidCollision bullets asteroids = foldr checkAndSplit ([], []) asteroids
+  where
+    checkAndSplit ast (shot, notShot)
+      | any (flip collisionDetected (astPos ast, astHbx ast) . (\b -> (bulletPos b, bulletHbx b))) bullets = (ast : shot, notShot)
+      | otherwise = (shot, ast : notShot)
+
 
 checkShipAsteroidCollision :: Ship -> Asteroid -> Bool
--- check if single asteroid collides with ship
-checkShipAsteroidCollision ship asteroid = any (collisionDetected (Common.shipCenter ship, shipHbx ship) . (\b -> (bulletPos b, bulletHbx b))) bullets
-    where bullets = map (\(x, y) -> Bullet { bulletPos = (x, y), bulletDir = (0, 0), bulletSpd = (0, 0), bulletHbx = (0, 0) }) (shipPos ship)
+checkShipAsteroidCollision ship asteroid = 
+    collisionDetected (shipCenter (shipPos ship), shipHbx ship) (astPos asteroid, astHbx asteroid)
+
+splitAsteroids :: [Asteroid] -> Ship -> ([Asteroid], [Asteroid])
+splitAsteroids asteroids ship = foldr split ([], []) asteroids
+  where
+    split ast (collided, notCollided)
+        | checkShipAsteroidCollision ship ast = (ast : collided, notCollided)
+        | otherwise = (collided, ast : notCollided)
 
 
 updateAsteroids :: Float -> [Asteroid] -> [Asteroid]
@@ -185,8 +206,8 @@ isOutOfBounds (x, y) = x < -700 || x > 700 || y < -1200 || y > 1200
 shortestPathToPlayer :: Enemy -> Ship -> Direction
 shortestPathToPlayer enemy ship = normalize' (dx ,dy)
     where
-        dx = fst (Common.shipCenter ship) - fst (enemyPos enemy)
-        dy = snd (Common.shipCenter ship) - snd (enemyPos enemy)
+        dx = fst (shipCenter (shipPos ship)) - fst (enemyPos enemy)
+        dy = snd (shipCenter (shipPos ship)) - snd (enemyPos enemy)
         normalize' (x, y) = let mag = sqrt (x*x + y*y) in (x / mag, y / mag)
 
 fireEnemyBullet :: Enemy -> Ship -> IO (Enemy, Maybe Bullet)
@@ -293,8 +314,8 @@ moveBullet deltaTime bullet = bullet {
 
 updateRotation :: Float -> Ship -> Ship
 updateRotation dt ship = 
-    ship { shipDir = if rotDir ship /= 0 
-                     then rotateVector (angleChange * rotDir ship) (shipDir ship) 
+    ship { shipDir = if shipRot ship /= 0 
+                     then rotateVector (angleChange * shipRot ship) (shipDir ship) 
                      else shipDir ship }
     where 
         rotationSpeed = 1.05
@@ -306,27 +327,15 @@ rotateShipPath :: Ship -> Ship
 rotateShipPath ship = ship { shipPos = rotatedPath }
   where
     (dx, dy) = shipDir ship
-    rotationAngle = atan2 dy dx * 180 / pi
-    center = Model.shipCenter (shipPos ship)
-    rotatedPath = map (Controller.rotatePoint rotationAngle center) (shipPos ship)
-
-rotatePoint :: Float -> Point -> Point -> Point
-rotatePoint angle (cx, cy) (x, y) =
-    let x' = cos angle * (x - cx) - sin angle * (y - cy) + cx
-        y' = sin angle * (x - cx) + cos angle * (y - cy) + cy
-    in (x', y')
-
+    rotationAngle = atan2 dx dy * 180 / pi
+    center = shipCenter (shipPos ship)
+    rotatedPath = map (rotatePoint rotationAngle center) (shipPos ship)
 
 
 rotateShip :: Float -> Ship -> Ship
 rotateShip r ship = ship { shipPos = map (rotatePoint r center) (shipPos ship) }
   where
-    center = Common.shipCenter ship
-    rotatePoint :: Float -> Point -> Point -> Point
-    rotatePoint r' (cx, cy) (x, y) =
-        let x' = cos r' * (x - cx) - sin r' * (y - cy) + cx
-            y' = sin r' * (x - cx) + cos r' * (y - cy) + cy
-        in (x', y')
+    center = shipCenter (shipPos ship)
 
 
 applyThrust :: Ship -> Ship
@@ -334,7 +343,7 @@ applyThrust ship = ship { shipSpd = clampedNewVelocity }
   where
     thrustAmount = 10
     (dx, dy) = shipDir ship
-    angle = atan2 dy dx
+    angle = atan2 dx dy
     newVelocity = (shipSpd ship) `addVectors` (cos angle * thrustAmount, sin angle * thrustAmount)
     clampedNewVelocity = if magnitude newVelocity > 600 then
                            newVelocity `scaleVector` (600 / magnitude newVelocity)

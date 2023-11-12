@@ -37,10 +37,11 @@ viewPure gstate
     let bulletPictures = map renderBullet (bullets gstate)
     let asteroidPictures = map renderAsteroid (asteroids gstate)
     let enemyPictures = map renderEnemy (enemies gstate)
+    let flamePicture = renderFlame (ship gstate) (time gstate)
     --return $ pictures (shipPicture : bulletPictures ++ asteroidPictures ++ enemyPictures ) --[var,var,var,]  -- TODO: Ship picure moet eigenlijk achteraan want nu tekenen andere dingen eroverheen.
 
     --return (pictures [draw (ship gstate), draw (asteroids gstate), draw (bullets gstate), draw (enemies gstate)])
-    return (pictures [shipPicture, pictures bulletPictures, pictures asteroidPictures, pictures enemyPictures, color white (text (show (rotDir (ship gstate)))), color red (text (show (shipDir (ship gstate))))])
+    return (pictures [shipPicture, pictures bulletPictures, flamePicture, pictures asteroidPictures, pictures enemyPictures, color white (text (show (shipRot (ship gstate)))), color red (text (show (shipDir (ship gstate))))])
   where
     t  = "Game has been paused"
     

@@ -21,7 +21,6 @@ data Ship = Ship {
     shipDir :: Direction,
     shipSpd :: Velocity,
     shipRot :: Float,
-    rotDir :: Float,
     shipHbx :: HitboxUnit
 }
 
@@ -80,7 +79,7 @@ instance Rotation Ship where
 
 
     rotate r s = s {
-         shipPos = map (rotateAroundCenter r (shipCenter s)) (shipPos s)
+         shipPos = map (rotateAroundCenter r (shipCenter (shipPos s))) (shipPos s)
      }
         where
              rotateAroundCenter :: Float -> Point -> Point -> Point
@@ -98,9 +97,8 @@ instance Rotation Ship where
                 in (xRot + cx, yRot + cy)
 
 
-shipCenter :: Ship -> Point
-shipCenter ship = 
-    let points = shipPos ship
-        n = fromIntegral $ length points
-        (sumX, sumY) = foldr (\(x, y) (accX, accY) -> (accX + x, accY + y)) (0, 0) points
+shipCenter :: Path -> Point
+shipCenter [xs,ys,zs,_] = 
+    let n = 3
+        (sumX, sumY) = foldr (\(x, y) (accX, accY) -> (accX + x, accY + y)) (0, 0) [xs, ys, zs]
     in (sumX / n, sumY / n)
