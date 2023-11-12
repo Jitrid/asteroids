@@ -78,7 +78,7 @@ instance Drawable Asteroid where
 
 instance Drawable Enemy where
     -- draw :: Enemy -> Picture
-    draw enemy = uncurry translate (enemyPos enemy) $ color blue $ circleSolid 5
+    draw enemy = uncurry translate (enemyPos enemy) $ color blue $ circleSolid 20
 
 instance Drawable Bullet where
     -- draw :: Bullet -> Picture

@@ -8,6 +8,7 @@ import Common
 
 import System.Random (randomRIO)
 import Asteroid
+import JSONSAVER
 import Graphics.Gloss.Interface.IO.Game
 import Data.Maybe (catMaybes)
 
@@ -52,7 +53,12 @@ handleEvents (EventKey (Char c) Down _ _) gstate
         } -- rotate left
         'd' -> gstate {
             ship = (ship gstate) { shipRot = -1 }
-        } -- rotate right
+        } -- save game
+        'p' -> gstate { 
+            paused = True
+            saveGameState "save.json" gstate            
+             }--load
+        'l' -> loadGameState "save.json"
         _   -> gstate
 handleEvents (EventKey (Char c) Up _ _) gstate
     | paused gstate = gstate
@@ -102,16 +108,20 @@ simulateGame deltaTime gstate
         -- check if ship collided with asteroid
         let collided = if any (checkShipAsteroidCollision finalShip) updatedAsteroids then currentHP - 1 else currentHP
 
+        -- check if ship has collided with enemy 
+        let collided' = if any (checkShipEnemyCollision finalShip) finalUpdatedEnemies then collided - 1 else collided
+
         -- check if ship collided with enemy bullet
-        let collided' = if any (collisionDetected (shipCtr s, shipHbx finalShip) . (\b -> (bulletPos b, bulletHbx b))) allBullets then collided - 1 else collided
+        let collided'' = if any (collisionDetected (shipCtr s, shipHbx finalShip) . (\b -> (bulletPos b, bulletHbx b))) allBullets then collided' - 1 else collided'
 
         -- check if HP is still the same, otherwise game over if HP is 0
-        let finalHP = if collided' /= currentHP then collided' else currentHP
+        let finalHP = if collided'' /= currentHP then collided'' else currentHP
 
         --Kill outside of bounds asteroids, bullets and enemies
         let survivingAsteroids = filter (not . isOutOfBounds . astPos) updatedAsteroids
         let survivingEnemies = filter (not . isOutOfBounds . enemyPos) finalUpdatedEnemies
         let survivingBullets = filter (not . isOutOfBounds . bulletPos) allBullets
+
 
         -- Check for collisions and kill asteroids
         let (shotAsteroids, notshotAsteroids) = checkBulletAsteroidCollision survivingBullets survivingAsteroids
@@ -119,13 +129,17 @@ simulateGame deltaTime gstate
         let allAsteroids = notshotAsteroids ++ newAsteroidsfromsplit
         let score = currentScore + (length shotAsteroids * 100)
 
+        -- Check for collisions and kill enemies
+        let (shotEnemies, notshotEnemies) = checkBulletEnemyCollision survivingBullets survivingEnemies
+        let score' = score + (length shotEnemies * 250)
+
         -- Spawn new Asteroid
         shouldSpawnAst <- shouldSpawnAsteroid
         newAsteroids <- if shouldSpawnAst then fmap (:allAsteroids) createRandomAsteroid else return allAsteroids
 
         -- Spawn new Enemy
         shouldSpawnEn <- shouldSpawnEnemy
-        newEnemies <- if shouldSpawnEn then fmap (:survivingEnemies) createRandomEnemy else return survivingEnemies
+        newEnemies <- if shouldSpawnEn then fmap (:notshotEnemies) createRandomEnemy else return notshotEnemies
         if finalHP /= currentHP && finalHP > 0
             then return initialState { lives = finalHP, score = score, asteroids = [] }
             else if finalHP == 0
@@ -147,9 +161,21 @@ checkBulletAsteroidCollision bullets = foldr checkAndSplit ([], [])
             | any (flip collisionDetected (astPos ast, astHbx ast) . (\b -> (bulletPos b, bulletHbx b))) bullets = (ast : shot, notShot)
             | otherwise = (shot, ast : notShot)
 
+checkBulletEnemyCollision :: [Bullet] -> [Enemy] -> ([Enemy], [Enemy])
+checkBulletEnemyCollision bullets = foldr checkAndSplit ([], [])
+    where
+        checkAndSplit enemy (shot, notShot)
+            | any (flip collisionDetected (enemyPos enemy, enemyHbx enemy) . (\b -> (bulletPos b, bulletHbx b))) bullets = (enemy : shot, notShot)
+            | otherwise = (shot, enemy : notShot)
+
 checkShipAsteroidCollision :: Ship -> Asteroid -> Bool
 checkShipAsteroidCollision ship asteroid = 
     collisionDetected (shipCtr ship, shipHbx ship) (astPos asteroid, astHbx asteroid)
+
+
+checkShipEnemyCollision :: Ship -> Enemy -> Bool
+checkShipEnemyCollision ship enemy = 
+    collisionDetected (shipCtr ship, shipHbx ship) (enemyPos enemy, enemyHbx enemy)
 
 splitAsteroids :: [Asteroid] -> Ship -> ([Asteroid], [Asteroid])
 splitAsteroids asteroids ship = foldr split ([], []) asteroids
