@@ -30,4 +30,4 @@ To correctly pilot your very own spaceship you will need the following controls:
 - D: Yaw right
 - LMB: Fire your laser rifle
 - Escape: Will pause the game if you need a break.
-- N: Will start a new game (This will also reset your score)
+- N: Will start a new game (and reset your score!)
