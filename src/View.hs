@@ -29,12 +29,20 @@ viewPure gstate
   | paused gstate = do
     width <- getWidth t
     return $ translate (-width / 4) 0 (scale 0.5 0.5 (color white (text t)))
-  | otherwise = return (pictures [ draw (ship gstate) ])
---   | otherwise     = case compare (lives gstate) 0 of
---         GT -> do
---             width <- getWidth t'
---             return $ translate (-width / 2) 0 (color green (text t'))
-    where
-        t  = "Game has been paused"
-        t' = "Alive (" ++ show (lives gstate) ++ ")"
+  | otherwise = do
+    let shipPicture = renderShip (ship gstate)
+    --let shipPicture = draw (ship gstate)
+    --let asteroidCountText = [renderText ("Asteroids: " ++ show (length (asteroids gstate))) (0) 0]
+  
+    let bulletPictures = map renderBullet (bullets gstate)
+    let asteroidPictures = map renderAsteroid (asteroids gstate)
+    let enemyPictures = map renderEnemy (enemies gstate)
+    --return $ pictures (shipPicture : bulletPictures ++ asteroidPictures ++ enemyPictures ) --[var,var,var,]  -- TODO: Ship picure moet eigenlijk achteraan want nu tekenen andere dingen eroverheen.
+
+    --return (pictures [draw (ship gstate), draw (asteroids gstate), draw (bullets gstate), draw (enemies gstate)])
+    return (pictures [shipPicture, pictures bulletPictures, pictures asteroidPictures, pictures enemyPictures, color white (text (show (rotDir (ship gstate)))), color red (text (show (shipDir (ship gstate))))])
+  where
+    t  = "Game has been paused"
+    
+
 

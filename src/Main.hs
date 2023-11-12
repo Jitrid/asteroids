@@ -6,9 +6,12 @@ import View
 
 import Graphics.Gloss.Interface.IO.Game
 
+import Graphics.UI.GLUT (getArgsAndInitialize)
+
 main :: IO ()
-main = do centerText (Text "Alive(x)")
-          centerText (Text "Game Over!")
+main = do --getArgsAndInitialize
+          --centerText (Text "Alive(x)")
+          --centerText (Text "Game Over!")
           playIO (InWindow "Asteroids on Steroids" (1200, 700) (0, 0))
               black
               24
