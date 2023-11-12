@@ -5,7 +5,6 @@ import Model
 import View
 
 import Graphics.Gloss.Interface.IO.Game
-import Common (screenSize)
 
 main :: IO ()
 main = do playIO (InWindow "Asteroids on Steroids" (1200, 700) (0, 0))

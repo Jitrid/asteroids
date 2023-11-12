@@ -1,6 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE InstanceSigs #-}
 
 module Common where
 
@@ -13,7 +12,6 @@ screenSize = (1200, 700)
 type Direction  = (Float,Float)
 type Velocity   = (Float,Float)
 type HitboxUnit = (Float,Float)
-data Difficulty = Easy | Normal | Hard | Extreme deriving (Eq, Show)
 
 -- | The data types to represent the game entities.
 -- Each entity has at least a position, direction, speed, and hitbox.
@@ -23,11 +21,11 @@ data Difficulty = Easy | Normal | Hard | Extreme deriving (Eq, Show)
 data Ship = Ship {
     shipCtr :: Point,   
     shipPos :: Path,
-    forward :: Bool,
     shipDir :: Direction,
     shipSpd :: Velocity,
     shipRot :: Float,
-    shipHbx :: HitboxUnit
+    shipHbx :: HitboxUnit,
+    forward :: Bool
 }
 
 -- | An asteroid floats around in space, and can be destroyed by the player.
@@ -41,12 +39,11 @@ data Asteroid = Asteroid {
 
 -- | An enemy is an entity that can shoot at the player.
 data Enemy = Enemy {
-    enemyPos :: Point,
-    enemyDir :: Direction,
-    enemySpd :: Velocity,
-    enemyHbx :: HitboxUnit,
-    enemyFireCD :: Float,
-    enemyDif :: Difficulty
+    enemyPos    :: Point,
+    enemyDir    :: Direction,
+    enemySpd    :: Velocity,
+    enemyHbx    :: HitboxUnit,
+    enemyFireCD :: Float
 }
 
 -- | 
@@ -64,14 +61,13 @@ class Drawable a where
 
 instance Drawable Ship where
     -- draw :: Ship -> Picture
-    draw ship = translate locX locY $ Rotate rotationAngleDegree $ color white $ line path
+    draw ship = translate locX locY $ Rotate rotationAngleDegree $ color white $ line (shipPos ship)
         where
-            (locX, locY) = shipCtr ship
-            (dx, dy)     = shipDir ship
-            rotationAngle = atan2 dx dy
+            (locX, locY)        = shipCtr ship
+            (dx, dy)            = shipDir ship
+            rotationAngle       = atan2 dx dy
             rotationAngleDegree = rotationAngle * 180 / pi
-            rotatedPath  = map (rotatePoint rotationAngle (0,0)) (shipPos ship)
-            path =  shipPos ship
+            rotatedPath         = map (rotatePoint rotationAngle (0,0)) (shipPos ship)
 
 instance Drawable Asteroid where
     -- draw :: Asteroid -> Picture
@@ -87,38 +83,52 @@ instance Drawable Bullet where
 
 -- | Move function
 
-class Move a where
+class Moveable a where
     move :: Float -> a -> a
 
-instance Move Ship where
+instance Moveable Ship where
     -- move :: Float -> Ship -> Ship
     move deltaTime ship = ship {
-            shipCtr = newLocation,
+            shipCtr = wrappedLocation,
             shipPos = shipPos ship
-        } 
+        }
         where
             (locX, locY) = shipCtr ship
             (dx, dy)     = shipSpd ship
             newLocation  = (locX + dx * deltaTime, locY + dy * deltaTime)
+            wrappedLocation = wrapPoint newLocation
 
-instance Move Asteroid where
+---HELP FUNCTION - REFACOTR THIS
+wrapPoint :: Point -> Point
+wrapPoint (x, y) = (x', y')
+    where
+        x'
+          | x < -(fst screenSize/2) = x + 2 * fst screenSize/2
+          | x > fst screenSize/2 = x - 2 * fst screenSize/2
+          | otherwise = x
+        y'
+          | y < -(snd screenSize/2) = y + 2 * snd screenSize/2
+          | y > snd screenSize/2 = y - 2 * snd screenSize/2
+          | otherwise = y
+
+instance Moveable Asteroid where
     -- move :: Float -> Asteroid -> Asteroid
     move deltaTime asteroid = asteroid { astPos = (newX, newY) }
         where
-            (currentX, currentY) = astPos asteroid
+            (currentX, currentY)   = astPos asteroid
             (velocityX, velocityY) = astSpd asteroid
 
             newX = currentX + velocityX * deltaTime
             newY = currentY + velocityY * deltaTime
 
-instance Move Enemy where
+instance Moveable Enemy where
     -- move :: Float -> Enemy -> Enemy
     move deltaTime enemy = enemy { 
-            enemyPos = (newX, newY),
+            enemyPos    = (newX, newY),
             enemyFireCD = newCooldown
         }
         where
-            (currentX, currentY) = enemyPos enemy
+            (currentX, currentY)   = enemyPos enemy
             (velocityX, velocityY) = enemySpd enemy
 
             newX = currentX + velocityX * deltaTime
@@ -126,14 +136,14 @@ instance Move Enemy where
 
             newCooldown = max 0 (enemyFireCD enemy - deltaTime)
 
-instance Move Bullet where
+instance Moveable Bullet where
     -- move :: Float -> Bullet -> Bullet
     move deltaTime bullet = bullet {
             bulletPos = (x + vx * speed * deltaTime, y + vy * speed * deltaTime)
         } 
         where
-            (x, y) = bulletPos bullet
-            speed =  fst (bulletSpd bullet)
+            (x, y)   = bulletPos bullet
+            speed    = fst (bulletSpd bullet)
             (vx, vy) = bulletDir bullet
 
 -- | Player Rotation
@@ -143,8 +153,7 @@ class Rotation a where
 
 instance Rotation Ship where
     -- rotate :: Float -> Ship -> Ship
-    rotate dt ship = ship { shipDir = if shipRot ship /= 0
-                                      then (cosR * dx - sinR * dy, sinR * dx + cosR * dy)
+    rotate dt ship = ship { shipDir = if shipRot ship /= 0 then (cosR * dx - sinR * dy, sinR * dx + cosR * dy)
                                       else shipDir ship 
                                     }
         where
@@ -152,21 +161,32 @@ instance Rotation Ship where
             cosR = cos rotationAmount
             sinR = sin rotationAmount
             (dx, dy) = shipDir ship
-            rotationSpeed = 1.05
-            angleChange = rotationSpeed * dt
 
--- | Miscellaneous
+-- | Animations
 
-rotatePoint :: Float -> Point -> Point -> Point
-rotatePoint angle (cx, cy) (x, y) =
-    let x' = cx + (x - cx) * cos angle - (y - cy) * sin angle
-        y' = cy + (x - cx) * sin angle + (y - cy) * cos angle
-    in (x', y')
+class Animatable a where
+    animate :: a -> [Point]
+    render :: Float -> a -> Picture
 
-translatePoint :: Point -> Point -> Point
-translatePoint (cx, cy) (x, y) = (x + cx, y + cy)
+instance Animatable Ship where
+    -- animate :: Ship -> [Point]
+    animate s = let center = shipCtr s
+                    (dirX , dirY) = shipDir s
+                    flameLength = 20
+                    baseFlamePoint = (fst center - flameLength * dirX, snd center - flameLength * dirY)
+                    flameWidth = flameLength * 0.5
+                    flamePoints = [baseFlamePoint]
+               in flamePoints
+    -- render :: Float -> Ship -> Picture
+    render t s = if forward s && shouldShowFlame t then Pictures $ map drawFlamePoint (Common.animate s)
+                 else Blank
+        where
+            drawFlamePoint (x,y) = translate x y $ color orange $ circleSolid 5.0
+            shouldShowFlame time = even (floor (time / 0.1))
 
 -- | Common functions used throughout the code base.
+
+-- Math
 
 normalize :: (Float, Float) -> (Float, Float)
 normalize (dx, dy) =
@@ -179,23 +199,22 @@ magnitude = sqrt . magnitudeSquared
 magnitudeSquared :: Velocity -> Float
 magnitudeSquared = dotProduct
 
---Vector Math
 addVectors :: (Float, Float) -> (Float, Float) -> (Float, Float)
 addVectors (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
 
 scaleVector :: (Float, Float) -> Float -> (Float, Float)
 scaleVector (x, y) s = (x * s, y * s)
 
-rotateVector :: Float -> Direction -> Direction
-rotateVector r (x, y) = (cos r * x - sin r * y, sin r * x + cos r * y)
-
 dotProduct :: (Float, Float) -> Float
 dotProduct (x, y) = x * x + y * y
 
 -- Other
 
-addPoints :: Point -> Point -> Point
-addPoints (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
+rotatePoint :: Float -> Point -> Point -> Point
+rotatePoint angle (cx, cy) (x, y) =
+    let x' = cx + (x - cx) * cos angle - (y - cy) * sin angle
+        y' = cy + (x - cx) * sin angle + (y - cy) * cos angle
+    in (x', y')
 
 isOutOfBounds :: Point -> Bool
 isOutOfBounds (x, y) = x < -(fst screenSize) || x > fst screenSize || y < -(snd screenSize) || y > snd screenSize

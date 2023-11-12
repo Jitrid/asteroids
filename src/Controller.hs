@@ -1,14 +1,12 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
--- | This module handles time and user input.
 module Controller where
 
 import Model
 import Common
+import Random
 
 import System.Random (randomRIO)
-import Random
--- import JSONSAVER
 import Graphics.Gloss.Interface.IO.Game
 import Data.Maybe (catMaybes)
 
@@ -46,19 +44,12 @@ handleEvents (EventKey (Char c) Down _ _) gstate
         'w' ->  gstate {
           ship = (ship gstate) { forward = True}
         }
-        's' -> gstate {
-            ship = applyBrake (ship gstate) }
         'a' -> gstate {
             ship = (ship gstate) { shipRot = 1}
-        } -- rotate left
+        }
         'd' -> gstate {
             ship = (ship gstate) { shipRot = -1 }
-        } -- save game
-        -- 'p' -> gstate { 
-        --     paused = True
-        --     saveGameState "save.json" gstate            
-        --      }--load
-        -- 'o' -> loadGameState "save.json"
+        }
         _   -> gstate
 handleEvents (EventKey (Char c) Up _ _) gstate
     | paused gstate = gstate
@@ -84,7 +75,6 @@ simulateGame :: Float -> GameState -> IO GameState
 simulateGame _ GameOver = return GameOver
 simulateGame deltaTime gstate
     | paused gstate = return gstate
-    -- | 
     | otherwise = do
         let s = ship gstate
         let asts = asteroids gstate
@@ -122,16 +112,15 @@ simulateGame deltaTime gstate
         let survivingEnemies = filter (not . isOutOfBounds . enemyPos) finalUpdatedEnemies
         let survivingBullets = filter (not . isOutOfBounds . bulletPos) allBullets
 
-
         -- Check for collisions and kill asteroids
-        let (shotAsteroids, notshotAsteroids) = checkBulletAsteroidCollision survivingBullets survivingAsteroids
+        let (shotAsteroids, notshotAsteroids, survivingBulletsAfterAsteroids) = checkBulletAsteroidCollision survivingBullets survivingAsteroids
         let newAsteroidsfromsplit = concatMap splitAsteroid shotAsteroids
         let allAsteroids = notshotAsteroids ++ newAsteroidsfromsplit
         let score = currentScore + (length shotAsteroids * 100)
 
         -- Check for collisions and kill enemies
-        let (shotEnemies, notshotEnemies) = checkBulletEnemyCollision survivingBullets survivingEnemies
-        let score' = score + (length shotEnemies * 250)
+        let (shotEnemies, notshotEnemies) = checkBulletEnemyCollision survivingBulletsAfterAsteroids survivingEnemies
+        let score' = score + (length shotEnemies * 1250)
 
         -- Spawn new Asteroid
         shouldSpawnAst <- shouldSpawnAsteroid
@@ -141,14 +130,16 @@ simulateGame deltaTime gstate
         shouldSpawnEn <- shouldSpawnEnemy
         newEnemies <- if shouldSpawnEn then fmap (:notshotEnemies) createRandomEnemy else return notshotEnemies
         if finalHP /= currentHP && finalHP > 0
-            then return initialState { lives = finalHP, score = score, asteroids = [] }
+            then return initialState { lives = finalHP, score = score', asteroids = [] }
             else if finalHP == 0
-                then return GameOver
+                then do 
+                    appendFile "scores.txt" (show score' ++ "\n")
+                    return GameOver
                 else return gstate {
-                    score = score,
+                    score = score',
                     lives = finalHP,
                     ship = finalShip,
-                    bullets = survivingBullets,
+                    bullets = survivingBulletsAfterAsteroids,
                     asteroids = newAsteroids,
                     time = time gstate + deltaTime,
                     enemies = newEnemies
@@ -163,7 +154,7 @@ applyThrust ship = ship { shipSpd = clampedNewVelocity }
         (dx, dy)           = shipDir ship
         angle              = atan2 dy dx
         newVelocity        = shipSpd ship `addVectors` (cos angle * thrustAmount, sin angle * thrustAmount)
-        clampedNewVelocity = if magnitude newVelocity > 400 then newVelocity `scaleVector` (400 / magnitude newVelocity)
+        clampedNewVelocity = if magnitude newVelocity > 250 then newVelocity `scaleVector` (250 / magnitude newVelocity)
                                 else newVelocity
 
 applyBrake :: Ship -> Ship
@@ -186,12 +177,23 @@ checkShipEnemyCollision :: Ship -> Enemy -> Bool
 checkShipEnemyCollision ship enemy =
     collisionDetected (shipCtr ship, shipHbx ship) (enemyPos enemy, enemyHbx enemy)
 
-checkBulletAsteroidCollision :: [Bullet] -> [Asteroid] -> ([Asteroid], [Asteroid])
-checkBulletAsteroidCollision bullets = foldr checkAndSplit ([], [])
+checkBulletAsteroidCollision :: [Bullet] -> [Asteroid] -> ([Asteroid], [Asteroid], [Bullet])
+checkBulletAsteroidCollision bullets asteroids =
+    let (shot, notShot, bulletsThatHit) = foldr checkAndSplit ([], [], []) asteroids
+    in (shot, notShot, [b | b <- bullets, not (b `isHitByAny` bulletsThatHit)])
     where
-        checkAndSplit ast (shot, notShot)
-            | any (flip collisionDetected (astPos ast, astHbx ast) . (\b -> (bulletPos b, bulletHbx b))) bullets = (ast : shot, notShot)
-            | otherwise = (shot, ast : notShot)
+        checkAndSplit ast (shotAsts, notShotAsts, hitBullets) =
+            let (hit, notHit) = foldr (checkBulletHit ast) ([], []) bullets
+            in (if not (null hit) then ast : shotAsts else shotAsts,
+                if null hit then ast : notShotAsts else notShotAsts,
+                hit ++ hitBullets)
+
+        checkBulletHit ast bullet (hit, notHit) =
+            if collisionDetected (bulletPos bullet, bulletHbx bullet) (astPos ast, astHbx ast)
+            then (bullet : hit, notHit)
+            else (hit, bullet : notHit)
+
+        isHitByAny bullet = any (\hitBullet -> bulletPos bullet == bulletPos hitBullet)
 
 checkBulletEnemyCollision :: [Bullet] -> [Enemy] -> ([Enemy], [Enemy])
 checkBulletEnemyCollision bullets = foldr checkAndSplit ([], [])
@@ -199,13 +201,6 @@ checkBulletEnemyCollision bullets = foldr checkAndSplit ([], [])
         checkAndSplit enemy (shot, notShot)
             | any (flip collisionDetected (enemyPos enemy, enemyHbx enemy) . (\b -> (bulletPos b, bulletHbx b))) bullets = (enemy : shot, notShot)
             | otherwise = (shot, enemy : notShot)
-
-splitAsteroids :: [Asteroid] -> Ship -> ([Asteroid], [Asteroid])
-splitAsteroids asteroids ship = foldr split ([], []) asteroids
-  where
-    split ast (collided, notCollided)
-        | checkShipAsteroidCollision ship ast = (ast : collided, notCollided)
-        | otherwise = (collided, ast : notCollided)
 
 -- | Enemy Logic
 

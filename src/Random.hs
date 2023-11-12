@@ -6,19 +6,15 @@ import Common
 -- Function to create a random asteroid
 createRandomAsteroid :: IO Asteroid
 createRandomAsteroid = do
-    -- Random position (adjust ranges according to your game's world size)
     x <- randomRIO (-400, 400)
     y <- randomRIO (-750, 750)
 
-    -- Random direction
     dirX <- randomRIO (-1, 1)
     dirY <- randomRIO (-1, 1)
 
-    -- Random speed
     speed <- randomRIO (50, 500)
 
-    -- Define size and hitbox (adjust as needed)
-    size <- randomRIO (20,80) -- Example size
+    size <- randomRIO (20,80)
     let hitbox = (size, size)
 
     return Asteroid {
@@ -46,7 +42,6 @@ createRandomEnemy = do
         enemyDir = (dirX, dirY),
         enemySpd = (dirX * speed, dirY * speed),
         enemyHbx = (size, size),
-        enemyDif = Easy,
         enemyFireCD = 2
     }
 
