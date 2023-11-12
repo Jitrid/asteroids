@@ -1,4 +1,4 @@
-module Asteroid where
+module Random where
 
 import System.Random (randomRIO)
 import Common

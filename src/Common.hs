@@ -84,11 +84,6 @@ instance Drawable Bullet where
     -- draw :: Bullet -> Picture
     draw bullet = uncurry translate (bulletPos bullet) $ color red $ circleSolid 2.5
 
--- | Collision functions
-
-collisionDetected :: (Point, HitboxUnit) -> (Point, HitboxUnit) -> Bool
-collisionDetected ((x1, y1), (w1, h1)) ((x2,y2), (w2, h2)) = abs (x1 - x2) * 2 < (w1 + w2) && abs (y1 - y2) * 2 < (h1 + h2)
-
 -- | Move function
 
 class Move a where

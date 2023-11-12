@@ -7,8 +7,8 @@ import Model
 import Common
 
 import System.Random (randomRIO)
-import Asteroid
-import JSONSAVER
+import Random
+-- import JSONSAVER
 import Graphics.Gloss.Interface.IO.Game
 import Data.Maybe (catMaybes)
 
@@ -33,7 +33,7 @@ handleEvents (EventKey (MouseButton m) Down _ _) gstate
         LeftButton  -> gstate { bullets = newBullet : bullets gstate }
          where
              newBullet = Bullet {
-                 bulletPos = shipCtr (ship gstate),  
+                 bulletPos = shipCtr (ship gstate),
                  bulletDir = normalize (shipDir (ship gstate)),
                  bulletSpd = (1000, 1000) ,
                  bulletHbx = (10, 10)
@@ -54,11 +54,11 @@ handleEvents (EventKey (Char c) Down _ _) gstate
         'd' -> gstate {
             ship = (ship gstate) { shipRot = -1 }
         } -- save game
-        'p' -> gstate { 
-            paused = True
-            saveGameState "save.json" gstate            
-             }--load
-        'l' -> loadGameState "save.json"
+        -- 'p' -> gstate { 
+        --     paused = True
+        --     saveGameState "save.json" gstate            
+        --      }--load
+        -- 'o' -> loadGameState "save.json"
         _   -> gstate
 handleEvents (EventKey (Char c) Up _ _) gstate
     | paused gstate = gstate
@@ -98,7 +98,7 @@ simulateGame deltaTime gstate
         let updatedAsteroids = map (move deltaTime) asts
 
         -- Update enemies
-        enemyActions <- mapM (\enemy -> fireEnemyBullet (move deltaTime enemy) s) ens
+        let enemyActions = map (\enemy -> fireEnemyBullet (move deltaTime enemy) s) ens
         let (finalUpdatedEnemies, newEnemyBullets) = unzip enemyActions
         let allBullets = updatedBullets ++ catMaybes newEnemyBullets
 
@@ -154,6 +154,19 @@ simulateGame deltaTime gstate
                     enemies = newEnemies
                 }
 
+-- | Collision Detection
+
+collisionDetected :: (Point, HitboxUnit) -> (Point, HitboxUnit) -> Bool
+collisionDetected ((x1, y1), (w1, h1)) ((x2,y2), (w2, h2)) = abs (x1 - x2) * 2 < (w1 + w2) && abs (y1 - y2) * 2 < (h1 + h2)
+
+checkShipAsteroidCollision :: Ship -> Asteroid -> Bool
+checkShipAsteroidCollision ship asteroid =
+    collisionDetected (shipCtr ship, shipHbx ship) (astPos asteroid, astHbx asteroid)
+
+checkShipEnemyCollision :: Ship -> Enemy -> Bool
+checkShipEnemyCollision ship enemy =
+    collisionDetected (shipCtr ship, shipHbx ship) (enemyPos enemy, enemyHbx enemy)
+
 checkBulletAsteroidCollision :: [Bullet] -> [Asteroid] -> ([Asteroid], [Asteroid])
 checkBulletAsteroidCollision bullets = foldr checkAndSplit ([], [])
     where
@@ -168,21 +181,14 @@ checkBulletEnemyCollision bullets = foldr checkAndSplit ([], [])
             | any (flip collisionDetected (enemyPos enemy, enemyHbx enemy) . (\b -> (bulletPos b, bulletHbx b))) bullets = (enemy : shot, notShot)
             | otherwise = (shot, enemy : notShot)
 
-checkShipAsteroidCollision :: Ship -> Asteroid -> Bool
-checkShipAsteroidCollision ship asteroid = 
-    collisionDetected (shipCtr ship, shipHbx ship) (astPos asteroid, astHbx asteroid)
-
-
-checkShipEnemyCollision :: Ship -> Enemy -> Bool
-checkShipEnemyCollision ship enemy = 
-    collisionDetected (shipCtr ship, shipHbx ship) (enemyPos enemy, enemyHbx enemy)
-
 splitAsteroids :: [Asteroid] -> Ship -> ([Asteroid], [Asteroid])
 splitAsteroids asteroids ship = foldr split ([], []) asteroids
   where
     split ast (collided, notCollided)
         | checkShipAsteroidCollision ship ast = (ast : collided, notCollided)
         | otherwise = (collided, ast : notCollided)
+
+-- | Enemy Logic
 
 shortestPathToPlayer :: Enemy -> Ship -> Direction
 shortestPathToPlayer enemy ship = normalize' (dx ,dy)
@@ -191,27 +197,27 @@ shortestPathToPlayer enemy ship = normalize' (dx ,dy)
         dy = snd (shipCtr ship) - snd (enemyPos enemy)
         normalize' (x, y) = let mag = sqrt (x*x + y*y) in (x / mag, y / mag)
 
-fireEnemyBullet :: Enemy -> Ship -> IO (Enemy, Maybe Bullet)
+fireEnemyBullet :: Enemy -> Ship -> (Enemy, Maybe Bullet)
 fireEnemyBullet enemy playerShip
-    | enemyFireCD enemy <= 0 = do
-
+    | enemyFireCD enemy <= 0 =
         let bulletDir = shortestPathToPlayer enemy playerShip
-        let newEnemy = enemy { enemyFireCD = 2.0 }
-        return (newEnemy, Just Bullet {
+            newEnemy = enemy { enemyFireCD = 2.0 }
+
+        in (newEnemy, Just Bullet {
             bulletPos = enemyPos enemy,
             bulletDir = bulletDir,
             bulletSpd = (300, 300),
             bulletHbx = (10, 10)
         })
-    | otherwise = return (enemy, Nothing)
+    | otherwise = (enemy, Nothing)
 
 updateRotation :: Float -> Ship -> Ship
-updateRotation dt ship = 
-    ship { shipDir = if shipRot ship /= 0 
-                     then (cosR * dx - sinR * dy, sinR * dx + cosR * dy) 
+updateRotation dt ship =
+    ship { shipDir = if shipRot ship /= 0
+                     then (cosR * dx - sinR * dy, sinR * dx + cosR * dy)
                      else shipDir ship }
-    where 
-        rotationAmount = shipRot ship * dt 
+    where
+        rotationAmount = shipRot ship * dt
         cosR = cos rotationAmount
         sinR = sin rotationAmount
         (dx, dy) = shipDir ship
@@ -242,7 +248,7 @@ applyThrust ship = ship { shipSpd = clampedNewVelocity }
 
 applyBrake :: Ship -> Ship
 applyBrake ship = ship { shipSpd = newVelocity }
-    where 
+    where
         brakeAmount = 0.95
-        newVelocity = if magnitude (shipSpd ship) > 0 then scaleVector (shipSpd ship) brakeAmount 
+        newVelocity = if magnitude (shipSpd ship) > 0 then scaleVector (shipSpd ship) brakeAmount
                         else (0, 0)

@@ -19,6 +19,7 @@ data GameState = Play {
     paused    :: Bool
 } | GameOver
 
+-- | The initial state of any new game.
 initialState :: GameState
 initialState = Play {
                 ship      = Ship {shipCtr = (0,0), shipPos = [(-15,-15), (0,30), (15,-15), (-15,-15)], forward = False, shipDir = (0,1), shipSpd = (0, 0), shipRot = 0, shipHbx = (45, 45) },

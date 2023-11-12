@@ -15,7 +15,8 @@ viewPure gstate
   | otherwise = pictures [pictures (map draw (asteroids gstate)),
                           pictures (map draw (enemies gstate)),
                           pictures (map draw (bullets gstate)),
-                          renderFlame (ship gstate) (time gstate),
-                          color white (text (show (lives gstate))),
-                          color red (text (show (score gstate))),
-                          draw (ship gstate)]
+                          draw (ship gstate),                      -- player
+                          renderFlame (ship gstate) (time gstate), -- animation
+                          -- HUD
+                          scale 0.3 0.3 $ translate (-1850) 950 $ color white (text ("Lives: " ++ show (lives gstate))),
+                          scale 0.3 0.3 $ translate (-1850) 750 $ color white (text ("Score: " ++ show (score gstate)))]
