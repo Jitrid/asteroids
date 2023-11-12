@@ -6,8 +6,8 @@ import Common
 createRandomAsteroid :: IO Asteroid
 createRandomAsteroid = do
     -- Random position (adjust ranges according to your game's world size)
-    x <- randomRIO (-700, 700)
-    y <- randomRIO (-1200, 1200)
+    x <- randomRIO (-400, 400)
+    y <- randomRIO (-750, 750)
 
     -- Random direction
     dirX <- randomRIO (-1, 1)
@@ -30,8 +30,8 @@ createRandomAsteroid = do
 
 createRandomEnemy :: IO Enemy
 createRandomEnemy = do
-    x <- randomRIO (-700, 700)
-    y <- randomRIO (-1200, 1200)
+    x <- randomRIO (-400, 400)
+    y <- randomRIO (-750, 750)
 
     dirX <- randomRIO (-1, 1)
     dirY <- randomRIO (-1, 1)

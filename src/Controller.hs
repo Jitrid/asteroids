@@ -13,11 +13,6 @@ import Data.Maybe (catMaybes)
 
 -- | Handle user input
 
--- + voor points
-addPoints :: Point -> Point -> Point
-addPoints (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
-
-
 handleEvents :: Event -> GameState -> GameState
 -- starting a new game
 handleEvents (EventKey (Char 'N') Down _ _) _ = initialState
@@ -65,11 +60,11 @@ handleEvents (EventKey (Char c) Up _ _) gstate
         'w' ->  gstate {
              ship = (ship gstate) { movingForward = False } }
         'a' -> gstate {
-            ship = (ship gstate) { shipRot = 0}
-        } -- rotate left
+            ship = (ship gstate) { shipRot = 0} -- reset rotation
+        }
         'd' -> gstate {
             ship = (ship gstate) { shipRot = 0 }
-        } -- rotate right
+        }
         _   -> gstate
 -- default
 handleEvents _ gstate = gstate
@@ -80,44 +75,53 @@ handleInput event gstate = return (handleEvents event gstate)
 -- | Other
 
 simulateGame :: Float -> GameState -> IO GameState
-simulateGame deltaTime gstate@(Play { ship = s, asteroids = asts, bullets = bs, enemies = ens }) = do
-    let rotatedShip = updateRotation deltaTime s
-    let shipWithThrust = (if movingForward rotatedShip then applyThrust else applyBrake) rotatedShip
-    let finalShip = moveShipPath deltaTime shipWithThrust
-    let updatedBullets = map (move deltaTime) bs
-    let updatedAsteroids = updateAsteroids deltaTime asts
-    
-    -- Update enemies
-    enemyActions <- mapM (\enemy -> fireEnemyBullet (move deltaTime enemy) s) ens
-    let (finalUpdatedEnemies, newEnemyBullets) = unzip enemyActions
-    let allBullets = updatedBullets ++ catMaybes newEnemyBullets
+simulateGame _ GameOver = return GameOver
+simulateGame deltaTime gstate
+    | paused gstate = return gstate
+    -- | 
+    | otherwise = do
+        let s = ship gstate
+        let asts = asteroids gstate
+        let bs = bullets gstate
+        let ens = enemies gstate
 
-    -- check for ship -asteroid colision: 
-    --Kill outside of bounds asteroids, bullets and enemies
-    let survivingAsteroids = filter (not . isOutOfBounds . astPos) updatedAsteroids
-    let survivingEnemies = filter (not . isOutOfBounds . enemyPos) finalUpdatedEnemies
-    let survivingBullets = filter (not . isOutOfBounds . bulletPos) allBullets
+        let rotatedShip = updateRotation deltaTime s
+        let shipWithThrust = (if movingForward rotatedShip then applyThrust else applyBrake) rotatedShip
+        let finalShip = moveShipPath deltaTime shipWithThrust
+        let updatedBullets = map (move deltaTime) bs
+        let updatedAsteroids = updateAsteroids deltaTime asts
 
-    -- Check for collisions and kill asteroids
-    let (shotAsteroids, notshotAsteroids) = checkBulletAsteroidCollision survivingBullets survivingAsteroids
-    let newAsteroidsfromsplit = concatMap splitAsteroid shotAsteroids
-    let allAsteroids = notshotAsteroids ++ newAsteroidsfromsplit
+        -- Update enemies
+        enemyActions <- mapM (\enemy -> fireEnemyBullet (move deltaTime enemy) s) ens
+        let (finalUpdatedEnemies, newEnemyBullets) = unzip enemyActions
+        let allBullets = updatedBullets ++ catMaybes newEnemyBullets
 
-    -- Spawn new Asteroid
-    shouldSpawnAst <- shouldSpawnAsteroid
-    newAsteroids <- if shouldSpawnAst then fmap (:allAsteroids) createRandomAsteroid else return allAsteroids
+        -- check for ship -asteroid colision: 
+        --Kill outside of bounds asteroids, bullets and enemies
+        let survivingAsteroids = filter (not . isOutOfBounds . astPos) updatedAsteroids
+        let survivingEnemies = filter (not . isOutOfBounds . enemyPos) finalUpdatedEnemies
+        let survivingBullets = filter (not . isOutOfBounds . bulletPos) allBullets
 
-    -- Spawn new Enemy
-    shouldSpawnEn <- shouldSpawnEnemy
-    newEnemies <- if shouldSpawnEn then fmap (:survivingEnemies) createRandomEnemy else return survivingEnemies
+        -- Check for collisions and kill asteroids
+        let (shotAsteroids, notshotAsteroids) = checkBulletAsteroidCollision survivingBullets survivingAsteroids
+        let newAsteroidsfromsplit = concatMap splitAsteroid shotAsteroids
+        let allAsteroids = notshotAsteroids ++ newAsteroidsfromsplit
 
-    return gstate {
-        ship = finalShip,
-        bullets = survivingBullets,
-        asteroids = newAsteroids,
-        time = time gstate + deltaTime,
-        enemies = newEnemies
-    }
+        -- Spawn new Asteroid
+        shouldSpawnAst <- shouldSpawnAsteroid
+        newAsteroids <- if shouldSpawnAst then fmap (:allAsteroids) createRandomAsteroid else return allAsteroids
+
+        -- Spawn new Enemy
+        shouldSpawnEn <- shouldSpawnEnemy
+        newEnemies <- if shouldSpawnEn then fmap (:survivingEnemies) createRandomEnemy else return survivingEnemies
+
+        return gstate {
+            ship = finalShip,
+            bullets = survivingBullets,
+            asteroids = newAsteroids,
+            time = time gstate + deltaTime,
+            enemies = newEnemies
+        }
 
 collisionDetected :: (Point, HitboxUnit) -> (Point, HitboxUnit) -> Bool
 collisionDetected ((x1, y1), (w1, h1)) ((x2,y2), (w2, h2)) =
@@ -186,9 +190,13 @@ shouldSpawnEnemy = do
 updateRotation :: Float -> Ship -> Ship
 updateRotation dt ship = 
     ship { shipDir = if shipRot ship /= 0 
-                     then rotateVector (angleChange * shipRot ship) (shipDir ship) 
+                     then (cosR * dx - sinR * dy, sinR * dx + cosR * dy) 
                      else shipDir ship }
     where 
+        rotationAmount = shipRot ship * dt 
+        cosR = cos rotationAmount
+        sinR = sin rotationAmount
+        (dx, dy) = shipDir ship
         rotationSpeed = 1.05
         angleChange = rotationSpeed * dt
 
@@ -213,7 +221,7 @@ applyThrust ship = ship { shipSpd = clampedNewVelocity }
     thrustAmount = 10
     (dx, dy) = shipDir ship
     angle = atan2 dy dx
-    newVelocity = (shipSpd ship) `addVectors` (cos angle * thrustAmount, sin angle * thrustAmount)
+    newVelocity = shipSpd ship `addVectors` (cos angle * thrustAmount, sin angle * thrustAmount)
     clampedNewVelocity = if magnitude newVelocity > 600 then
                            newVelocity `scaleVector` (600 / magnitude newVelocity)
                          else

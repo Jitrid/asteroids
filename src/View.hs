@@ -5,45 +5,16 @@ import Model
 import Common
 import Graphics.Gloss
 
-import Graphics.UI.GLUT.Fonts
-
 renderGame :: GameState -> IO Picture
-renderGame = viewPure
+renderGame = return . viewPure
 
--- temp function to determine width of a text.
-centerText :: Picture -> IO Float
-centerText (Text str) =
-    fromIntegral <$> stringWidth Roman str
-    --putStrLn $ "Width: " ++ show (fromIntegral width)
-
-getWidth :: String -> IO Float
-getWidth = centerText . Text
-
-viewPure :: GameState -> IO Picture
-viewPure GameOver = do
-    width <- getWidth t
-    return $ translate (-width / 2) 0 (color red (text t))
-    where
-        t = "Game Over!"
+viewPure :: GameState -> Picture
+viewPure GameOver = translate (-724 / 2) 0 (color red (text "Game Over!"))
 viewPure gstate
-  | paused gstate = do
-    width <- getWidth t
-    return $ translate (-width / 4) 0 (scale 0.5 0.5 (color white (text t)))
-  | otherwise = do
-    let shipPicture = renderShip (ship gstate)
-    --let shipPicture = draw (ship gstate)
-    --let asteroidCountText = [renderText ("Asteroids: " ++ show (length (asteroids gstate))) (0) 0]
-  
-    let bulletPictures = map renderBullet (bullets gstate)
-    let asteroidPictures = map renderAsteroid (asteroids gstate)
-    let enemyPictures = map renderEnemy (enemies gstate)
-    let flamePicture = renderFlame (ship gstate) (time gstate)
-    --return $ pictures (shipPicture : bulletPictures ++ asteroidPictures ++ enemyPictures ) --[var,var,var,]  -- TODO: Ship picure moet eigenlijk achteraan want nu tekenen andere dingen eroverheen.
-
-    --return (pictures [draw (ship gstate), draw (asteroids gstate), draw (bullets gstate), draw (enemies gstate)])
-    return (pictures [shipPicture, pictures bulletPictures, flamePicture, pictures asteroidPictures, pictures enemyPictures, color white (text (show (shipRot (ship gstate)))), color red (text (show (shipDir (ship gstate))))])
-  where
-    t  = "Game has been paused"
-    
-
-
+  | paused gstate = translate (-1540 / 4) 0 (scale 0.5 0.5 (color white (text "Game has been paused")))
+  | otherwise = pictures [pictures (map draw (asteroids gstate)),
+                          pictures (map draw (enemies gstate)),
+                          pictures (map draw (bullets gstate)),
+                          --  color white (text (show (shipRot (ship gstate)))), 
+                          --  color red (text (show (shipDir (ship gstate)))),
+                          draw (ship gstate)]

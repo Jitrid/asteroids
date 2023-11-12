@@ -56,11 +56,35 @@ data Bullet = Bullet {
     bulletHbx :: HitboxUnit
 }
 
+-- | Draw functions
+
 class Drawable a where
     draw :: a -> Picture
 
 instance Drawable Ship where
-    draw s = color white (line (shipPos s))
+    -- draw :: Ship -> Picture
+    draw ship = translate locX locY $ Rotate rotationAngleDegree $ color white $ line path
+        where
+            (locX, locY) = shipLocation ship
+            (dx, dy)     = shipDir ship
+            rotationAngle = atan2 dx dy
+            rotationAngleDegree = rotationAngle * 180 / pi
+            rotatedPath  = map (rotatePoint rotationAngle (0,0)) (shipPos ship)
+            path =  shipPos ship
+
+instance Drawable Asteroid where
+    -- draw :: Asteroid -> Picture
+    draw asteroid = uncurry translate (astPos asteroid) $ color green $ circleSolid (astSize asteroid)
+
+instance Drawable Enemy where
+    -- draw :: Enemy -> Picture
+    draw enemy = uncurry translate (enemyPos enemy) $ color blue $ circleSolid 5
+
+instance Drawable Bullet where
+    -- draw :: Bullet -> Picture
+    draw bullet = uncurry translate (bulletPos bullet) $ color red $ circleSolid 1.0
+
+-- |
 
 class Rotation a where
     rotate :: Float -> a -> a
@@ -153,6 +177,15 @@ shipCenter [xs,ys,zs,_] =
         (sumX, sumY) = foldr (\(x, y) (accX, accY) -> (accX + x, accY + y)) (0, 0) [xs, ys, zs]
     in (sumX / n, sumY / n)
 
+rotatePoint :: Float -> Point -> Point -> Point
+rotatePoint angle (cx, cy) (x, y) =
+    let x' = cx + (x - cx) * cos angle - (y - cy) * sin angle
+        y' = cy + (x - cx) * sin angle + (y - cy) * cos angle
+    in (x', y')
+
+translatePoint :: Point -> Point -> Point
+translatePoint (cx, cy) (x, y) = (x + cx, y + cy)
+
 -- | Common functions used throughout the code base.
 
 normalize :: (Float, Float) -> (Float, Float)
@@ -180,6 +213,9 @@ dotProduct :: (Float, Float) -> Float
 dotProduct (x, y) = x * x + y * y
 
 -- Other
+
+addPoints :: Point -> Point -> Point
+addPoints (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
 
 isOutOfBounds :: Point -> Bool
 isOutOfBounds (x, y) = x < -(fst screenSize) || x > fst screenSize || y < -(snd screenSize) || y > snd screenSize
