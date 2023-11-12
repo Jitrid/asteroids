@@ -6,9 +6,9 @@ import Model
 import Common
 import Random
 
-import System.Random (randomRIO)
+import System.Random
 import Graphics.Gloss.Interface.IO.Game
-import Data.Maybe (catMaybes)
+import Data.Maybe
 
 -- | Handle user input
 
@@ -120,14 +120,14 @@ simulateGame deltaTime gstate
 
         -- Check for collisions and kill enemies
         let (shotEnemies, notshotEnemies) = checkBulletEnemyCollision survivingBulletsAfterAsteroids survivingEnemies
-        let score' = score + (length shotEnemies * 1250)
+        let score' = score + (length shotEnemies * 250)
 
         -- Spawn new Asteroid
-        shouldSpawnAst <- shouldSpawnAsteroid
+        shouldSpawnAst <- shouldSpawn 0.1
         newAsteroids <- if shouldSpawnAst then fmap (:allAsteroids) createRandomAsteroid else return allAsteroids
 
         -- Spawn new Enemy
-        shouldSpawnEn <- shouldSpawnEnemy
+        shouldSpawnEn <- shouldSpawn 0.02
         newEnemies <- if shouldSpawnEn then fmap (:notshotEnemies) createRandomEnemy else return notshotEnemies
         if finalHP /= currentHP && finalHP > 0
             then return initialState { lives = finalHP, score = score', asteroids = [] }
@@ -155,14 +155,14 @@ applyThrust ship = ship { shipSpd = clampedNewVelocity }
         angle              = atan2 dy dx
         newVelocity        = shipSpd ship `addVectors` (cos angle * thrustAmount, sin angle * thrustAmount)
         clampedNewVelocity = if magnitude newVelocity > 250 then newVelocity `scaleVector` (250 / magnitude newVelocity)
-                                else newVelocity
+                             else newVelocity
 
 applyBrake :: Ship -> Ship
 applyBrake ship = ship { shipSpd = newVelocity }
     where
         brakeAmount = 0.95
         newVelocity = if magnitude (shipSpd ship) > 0 then scaleVector (shipSpd ship) brakeAmount
-                        else (0, 0)
+                      else (0, 0)
 
 -- | Collision Detection
 
@@ -189,8 +189,7 @@ checkBulletAsteroidCollision bullets asteroids =
                 hit ++ hitBullets)
 
         checkBulletHit ast bullet (hit, notHit) =
-            if collisionDetected (bulletPos bullet, bulletHbx bullet) (astPos ast, astHbx ast)
-            then (bullet : hit, notHit)
+            if collisionDetected (bulletPos bullet, bulletHbx bullet) (astPos ast, astHbx ast) then (bullet : hit, notHit)
             else (hit, bullet : notHit)
 
         isHitByAny bullet = any (\hitBullet -> bulletPos bullet == bulletPos hitBullet)

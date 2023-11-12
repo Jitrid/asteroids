@@ -1,88 +1,69 @@
--- and ship asteroid collision:
+-- | The goal of this file is to define test functions, as well as some test variables to use in the tests.
+-- It is not meant to be run as a standalone program, but rather to be imported by other modules.
+module Tests where
 
--- | Test if ship collides with asteroid
-testShipAsteroidCollision :: Test
-testShipAsteroidCollision = TestCase $ do
-    let ship = Ship {
-            shipPos = (0, 0),
-            shipDir = (0, 0),
-            shipSpd = (0, 0),
-            shipRot = 0,
-            forward = False,
-            shipHbx = (20, 20)
-        }
-    let asteroid = Asteroid {
-            astPos = (0, 0),
-            astDir = (0, 0),
-            astSpd = (0, 0),
-            astHbx = (20, 20),
-            astSize = 20
-        }
-    assertEqual "Ship should collide with asteroid" True (collisionDetected (shipPos ship, shipHbx ship) (astPos asteroid, astHbx asteroid))
+import Common
+import Controller
 
--- | Test if ship collides with asteroid
-testShipAsteroidCollision2 :: Test
-testShipAsteroidCollision2 = TestCase $ do
-    let ship = Ship {
-            shipPos = (0, 0),
-            shipDir = (0, 0),
-            shipSpd = (0, 0),
-            shipRot = 0,
-            forward = False,
-            shipHbx = (20, 20)
-        }
-    let asteroid = Asteroid {
-            astPos = (0, 0),
-            astDir = (0, 0),
-            astSpd = (0, 0),
-            astHbx = (20, 20),
-            astSize = 20
-        }
-    assertEqual "Ship should collide with asteroid" True (collisionDetected (shipPos ship, shipHbx ship) (astPos asteroid, astHbx asteroid))
+import Graphics.Gloss
 
--- | Test if ship does not collide with asteroid
-testShipAsteroidCollision3 :: Test
-testShipAsteroidCollision3 = TestCase $ do
-    let ship = Ship {
-            shipPos = (0, 0),
-            shipDir = (0, 0),
-            shipSpd = (0, 0),
-            shipRot = 0,
-            forward = False,
-            shipHbx = (20, 20)
-        }
-    let asteroid = Asteroid {
-            astPos = (1000, 1000),
-            astDir = (0, 0),
-            astSpd = (0, 0),
-            astHbx = (20, 20),
-            astSize = 20
-        }
-    assertEqual "Ship should not collide with asteroid" False (collisionDetected (shipPos ship, shipHbx ship) (astPos asteroid, astHbx asteroid))
+-- | Ship-Asteroid collision detection
 
---Give me a test to test my outofbounds function by putting an asteroid out of bounds  and making sure it despawns
-testOutOfBounds :: Test
-testOutOfBounds = TestCase $ do
-    let asteroid = Asteroid {
-            astPos = (1000, 1000),
-            astDir = (0, 0),
-            astSpd = (0, 0),
-            astHbx = (20, 20),
-            astSize = 20
-        }
-    assertEqual "Asteroid should be out of bounds" True (outOfBounds asteroid)
+testShipAsteroidCollision :: Ship -> Asteroid -> Bool
+testShipAsteroidCollision = checkShipAsteroidCollision
 
---Give me a test to test my outofbounds function by putting an asteroid in bounds and making sure it doesn't despawn
-testOutOfBounds2 :: Test
-testOutOfBounds2 = TestCase $ do
-    let asteroid = Asteroid {
-            astPos = (0, 0),
-            astDir = (0, 0),
-            astSpd = (0, 0),
-            astHbx = (20, 20),
-            astSize = 20
-        }
-    assertEqual "Asteroid should be in bounds" False (outOfBounds asteroid)
+testShip :: Ship
+testShip = Ship {
+    shipCtr = (0, 0),
+    shipPos = [(-15,-15), (0,30), (15,-15), (-15,-15)],
+    shipDir = (0, 0),
+    shipSpd = (0, 0),
+    shipRot = 0,
+    shipHbx = (20, 20),
+    forward = False
+}
 
+testAsteroid1 :: Asteroid
+testAsteroid1 = Asteroid {
+    astPos = (0, 0),
+    astDir = (0, 0),
+    astSpd = (0, 0),
+    astHbx = (20, 20),
+    astSize = 20
+}
+testAsteroid2 :: Asteroid
+testAsteroid2 = Asteroid {
+    astPos = (1000, 1000),
+    astDir = (0, 0),
+    astSpd = (0, 0),
+    astHbx = (20, 20),
+    astSize = 20
+}
 
+-- | Ship-Enemy collision detection
+
+testShipEnemyCollision :: Ship -> Enemy -> Bool
+testShipEnemyCollision = checkShipEnemyCollision
+
+testEnemy :: Enemy
+testEnemy = Enemy {
+    enemyPos = (0, 0),
+    enemyDir = (0, 0),
+    enemySpd = (0, 0),
+    enemyHbx = (20, 20),
+    enemyFireCD = 0
+}
+testEnemy2 :: Enemy
+testEnemy2 = Enemy {
+    enemyPos = (1000, 1000),
+    enemyDir = (0, 0),
+    enemySpd = (0, 0),
+    enemyHbx = (20, 20),
+    enemyFireCD = 0
+}
+
+-- | Out of bounds detection
+
+testOutOfBounds :: Point -> Bool
+testOutOfBounds = isOutOfBounds
 

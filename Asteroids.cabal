@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               Asteroids
-version:            0.1.0.0
+version:            1.0.0.0
 author:             Group53
 maintainer:         r.schenkels@uu.nl, m.a.chappin@uu.nl
 synopsis:           A simple asteroids game
@@ -12,5 +12,5 @@ executable Asteroids
     main-is:          Main.hs
     build-depends:    base ^>=4.16.4.0, gloss, random
     hs-source-dirs:   src
-    other-modules:    Common, Controller, Model, View, Random
+    other-modules:    Common, Controller, Model, View, Random, Tests
     default-language: Haskell2010

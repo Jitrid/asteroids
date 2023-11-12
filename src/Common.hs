@@ -98,19 +98,6 @@ instance Moveable Ship where
             newLocation  = (locX + dx * deltaTime, locY + dy * deltaTime)
             wrappedLocation = wrapPoint newLocation
 
----HELP FUNCTION - REFACOTR THIS
-wrapPoint :: Point -> Point
-wrapPoint (x, y) = (x', y')
-    where
-        x'
-          | x < -(fst screenSize/2) = x + 2 * fst screenSize/2
-          | x > fst screenSize/2 = x - 2 * fst screenSize/2
-          | otherwise = x
-        y'
-          | y < -(snd screenSize/2) = y + 2 * snd screenSize/2
-          | y > snd screenSize/2 = y - 2 * snd screenSize/2
-          | otherwise = y
-
 instance Moveable Asteroid where
     -- move :: Float -> Asteroid -> Asteroid
     move deltaTime asteroid = asteroid { astPos = (newX, newY) }
@@ -215,6 +202,18 @@ rotatePoint angle (cx, cy) (x, y) =
     let x' = cx + (x - cx) * cos angle - (y - cy) * sin angle
         y' = cy + (x - cx) * sin angle + (y - cy) * cos angle
     in (x', y')
+
+wrapPoint :: Point -> Point
+wrapPoint (x, y) = (x', y')
+    where
+        x'
+          | x < -(fst screenSize/2) = x + 2 * fst screenSize/2
+          | x > fst screenSize/2 = x - 2 * fst screenSize/2
+          | otherwise = x
+        y'
+          | y < -(snd screenSize/2) = y + 2 * snd screenSize/2
+          | y > snd screenSize/2 = y - 2 * snd screenSize/2
+          | otherwise = y
 
 isOutOfBounds :: Point -> Bool
 isOutOfBounds (x, y) = x < -(fst screenSize) || x > fst screenSize || y < -(snd screenSize) || y > snd screenSize

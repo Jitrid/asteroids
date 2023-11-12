@@ -1,9 +1,9 @@
 module Random where
 
-import System.Random (randomRIO)
 import Common
 
--- Function to create a random asteroid
+import System.Random
+
 createRandomAsteroid :: IO Asteroid
 createRandomAsteroid = do
     x <- randomRIO (-400, 400)
@@ -45,18 +45,7 @@ createRandomEnemy = do
         enemyFireCD = 2
     }
 
-shouldSpawnAsteroid :: IO Bool
-shouldSpawnAsteroid = do
-    let probability :: Double
-        probability = 0.1  -- 5%
-
+shouldSpawn :: Double -> IO Bool
+shouldSpawn prob = do
     randomValue <- randomRIO (0.0, 1.0 :: Double)
-    return (randomValue < probability)
-
-shouldSpawnEnemy :: IO Bool
-shouldSpawnEnemy = do
-    let probability :: Double
-        probability = 0.02  -- .1%
-
-    randomValue <- randomRIO (0.0, 1.0 :: Double)
-    return (randomValue < probability)
+    return (randomValue < prob)

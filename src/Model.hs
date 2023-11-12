@@ -3,6 +3,7 @@
 module Model where
 
 import Common
+
 import Graphics.Gloss
 
 -- | The current state of the game.
